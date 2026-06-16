@@ -1,4 +1,4 @@
-package com.iduenduen.coreservice.common.base;
+package com.iduenduen.mtsservice.common.base;
 
 import org.springframework.http.HttpStatus;
 

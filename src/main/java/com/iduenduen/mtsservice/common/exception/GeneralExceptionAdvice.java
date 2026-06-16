@@ -1,8 +1,8 @@
-package com.iduenduen.coreservice.common.exception;
+package com.iduenduen.mtsservice.common.exception;
 
-import com.iduenduen.coreservice.common.base.BaseStatus;
-import com.iduenduen.coreservice.common.response.ApiResponse;
-import com.iduenduen.coreservice.common.status.ErrorStatus;
+import com.iduenduen.mtsservice.common.base.BaseStatus;
+import com.iduenduen.mtsservice.common.response.ApiResponse;
+import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;

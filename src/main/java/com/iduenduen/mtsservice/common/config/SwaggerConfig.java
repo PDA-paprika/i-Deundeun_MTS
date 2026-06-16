@@ -1,4 +1,4 @@
-package com.iduenduen.coreservice.common.config;
+package com.iduenduen.mtsservice.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +26,7 @@ public class SwaggerConfig {
 				.addSecurityItem(new SecurityRequirement().addList("BearerAuth"))
 				.components(new Components().addSecuritySchemes("BearerAuth", bearerScheme))
 				.info(new Info()
-						.title("IDeundeun core-service Backend API")
+						.title("IDeundeun mts-service Backend API")
 						.description("프로디지털아카데미 아이 든든 프로젝트의 백엔드 API 문서입니다.")
 						.version("1.0.0")
 						.contact(new Contact()

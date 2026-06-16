@@ -31,12 +31,17 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
-
     //mysql
     runtimeOnly 'com.mysql:mysql-connector-j:9.7.0'
 
     //swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+
+    // LS API REST 호출용 (WebClient)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // LS API 실시간 시세용 (WebSocket)
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 tasks.named('test') {
