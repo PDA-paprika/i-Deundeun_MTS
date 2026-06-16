@@ -1,8 +1,8 @@
-package com.iduenduen.coreservice.common.status;
+package com.iduenduen.mtsservice.common.status;
 
 import org.springframework.http.HttpStatus;
 
-import com.iduenduen.coreservice.common.base.BaseStatus;
+import com.iduenduen.mtsservice.common.base.BaseStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

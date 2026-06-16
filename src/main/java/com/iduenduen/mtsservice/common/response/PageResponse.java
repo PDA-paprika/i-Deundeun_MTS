@@ -1,4 +1,4 @@
-package com.iduenduen.coreservice.common.response;
+package com.iduenduen.mtsservice.common.response;
 
 import java.util.List;
 

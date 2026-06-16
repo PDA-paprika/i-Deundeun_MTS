@@ -1,6 +1,6 @@
-package com.iduenduen.coreservice.common.response;
+package com.iduenduen.mtsservice.common.response;
 
-import com.iduenduen.coreservice.common.base.BaseStatus;
+import com.iduenduen.mtsservice.common.base.BaseStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;

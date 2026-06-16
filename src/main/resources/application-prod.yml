@@ -12,3 +12,10 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+ls:
+  api:
+    app-key: ${LS_APP_KEY}
+    app-secret: ${LS_APP_SECRET}
+    base-url: https://openapi.ls-sec.co.kr:8080
+    ws-url: wss://openapi.ls-sec.co.kr:9443/websocket
