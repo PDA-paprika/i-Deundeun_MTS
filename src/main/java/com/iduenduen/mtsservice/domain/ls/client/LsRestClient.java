@@ -20,6 +20,8 @@ public class LsRestClient {
                 .header("authorization", "Bearer " + lsTokenManager.getToken())
                 .header("tr_cd", trCd)
                 .header("tr_cont", "N")
+                .header("tr_cont_key", "")
+                .header("mac_address", lsProperties.getMacAddress() == null ? "" : lsProperties.getMacAddress())
                 .body(requestBody)
                 .retrieve()
                 .body(responseType);

@@ -16,4 +16,5 @@ public class LsProperties {
     private String appSecret;
     private String baseUrl;
     private String wsUrl;
+    private String macAddress;
 }
