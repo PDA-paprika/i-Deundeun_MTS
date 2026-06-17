@@ -19,7 +19,12 @@ public enum ErrorStatus implements BaseStatus {
     FORBIDDEN("COMM_403", HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     NOT_FOUND("COMM_404", HttpStatus.NOT_FOUND, "요청한 자원을 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED("COMM_405", HttpStatus.METHOD_NOT_ALLOWED, "허용되지 않은 메소드입니다."),
-    INTERNAL_SERVER_ERROR("COMM_500", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다.");
+    INTERNAL_SERVER_ERROR("COMM_500", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류입니다."),
+
+    /**
+     * Account
+     */
+    ACCOUNT_NOT_FOUND("ACC_404", HttpStatus.NOT_FOUND, "계좌를 찾을 수 없습니다.");
 
     private final String code;
     private final HttpStatus httpStatus;
