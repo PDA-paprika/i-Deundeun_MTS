@@ -13,6 +13,11 @@ spring:
       hibernate:
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
 ls:
   api:
     app-key: ${LS_APP_KEY}
