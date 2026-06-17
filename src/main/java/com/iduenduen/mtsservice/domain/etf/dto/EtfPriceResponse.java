@@ -14,6 +14,7 @@ public class EtfPriceResponse {
     private final long lowPrice;
     private final long closePrice;
     private final long volume;
+    private final long tradeAmount;
     private final LocalDateTime candleTime;
 
     private EtfPriceResponse(EtfCandle1m candle) {
@@ -22,6 +23,7 @@ public class EtfPriceResponse {
         this.lowPrice = candle.getLowPrice();
         this.closePrice = candle.getClosePrice();
         this.volume = candle.getVolume();
+        this.tradeAmount = candle.getTradeAmount();
         this.candleTime = candle.getCandleTime();
     }
 

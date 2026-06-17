@@ -1,4 +1,4 @@
-package com.iduenduen.mtsservice.domain.ls.client;
+package com.iduenduen.mtsservice.common.ls.client;
 
 import lombok.Getter;
 import lombok.Setter;
