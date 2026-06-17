@@ -42,6 +42,9 @@ dependencies {
 
     // LS API 실시간 시세용 (WebSocket)
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // LS 토큰 캐싱용 (Redis)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 }
 
 tasks.named('test') {
