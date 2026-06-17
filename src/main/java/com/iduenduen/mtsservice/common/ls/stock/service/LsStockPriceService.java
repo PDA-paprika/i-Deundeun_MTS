@@ -1,8 +1,8 @@
-package com.iduenduen.mtsservice.domain.ls.stock;
+package com.iduenduen.mtsservice.common.ls.stock.service;
 
-import com.iduenduen.mtsservice.domain.ls.client.LsRestClient;
-import com.iduenduen.mtsservice.domain.ls.stock.dto.LsStockPriceRequest;
-import com.iduenduen.mtsservice.domain.ls.stock.dto.LsStockPriceResponse;
+import com.iduenduen.mtsservice.common.ls.client.LsRestClient;
+import com.iduenduen.mtsservice.common.ls.stock.dto.LsStockPriceRequest;
+import com.iduenduen.mtsservice.common.ls.stock.dto.LsStockPriceResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
