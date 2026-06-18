@@ -10,4 +10,7 @@ import java.util.List;
 public interface TradeOrderRepository extends JpaRepository<TradeOrder, String> {
     List<TradeOrder> findByAccountIdAndStatus(String accountId, OrderStatus status);
     List<TradeOrder> findByAccountIdAndSideAndStatus(String accountId, OrderSide side, OrderStatus status);
+
+    List<TradeOrder> findByAccountIdAndStatusIn(String accountId, List<OrderStatus> statuses);
+    List<TradeOrder> findByAccountIdAndSideAndStatusIn(String accountId, OrderSide side, List<OrderStatus> statuses);
 }
