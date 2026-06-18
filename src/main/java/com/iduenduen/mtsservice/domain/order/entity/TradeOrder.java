@@ -4,13 +4,10 @@ import com.iduenduen.mtsservice.domain.order.enums.OrderSide;
 import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
 import com.iduenduen.mtsservice.domain.order.enums.OrderType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 
@@ -18,20 +15,18 @@ import java.time.LocalDateTime;
 @Table(name = "trade_orders")
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class TradeOrder {
 
     @Id
-    @UuidGenerator
-    @Column(name = "id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", updatable = false, nullable = false)
+    private Long id;
 
-    @Column(name = "account_id", columnDefinition = "CHAR(36)", nullable = false)
-    private String accountId;
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
 
-    @Column(name = "parent_id", columnDefinition = "CHAR(36)", nullable = false)
-    private String parentId;
+    @Column(name = "parent_id", nullable = false)
+    private Long parentId;
 
     @Column(name = "etf_id", nullable = false)
     private Long etfId;

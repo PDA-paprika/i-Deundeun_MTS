@@ -1,4 +1,4 @@
-package com.iduenduen.mtsservice.domain.ls.auth;
+package com.iduenduen.mtsservice.common.ls.auth;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

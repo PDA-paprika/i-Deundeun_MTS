@@ -1,6 +1,8 @@
 package com.iduenduen.mtsservice.domain.ls.auth;
 
-import com.iduenduen.mtsservice.domain.ls.client.LsProperties;
+import com.iduenduen.mtsservice.common.ls.auth.LsAuthClient;
+import com.iduenduen.mtsservice.common.ls.auth.LsTokenResponse;
+import com.iduenduen.mtsservice.common.ls.client.LsProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;

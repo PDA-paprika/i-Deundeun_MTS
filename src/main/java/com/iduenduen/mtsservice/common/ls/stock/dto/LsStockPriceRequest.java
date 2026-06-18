@@ -1,4 +1,4 @@
-package com.iduenduen.mtsservice.domain.ls.stock.dto;
+package com.iduenduen.mtsservice.common.ls.stock.dto;
 
 import lombok.Getter;
 

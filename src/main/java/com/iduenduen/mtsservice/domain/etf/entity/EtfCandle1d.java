@@ -18,11 +18,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "etf_candles_1m")
+@Table(name = "etf_candles_1d")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EtfCandle1m {
+public class EtfCandle1d {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,7 +56,7 @@ public class EtfCandle1m {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private EtfCandle1m(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
+    private EtfCandle1d(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
                          long volume, long tradeAmount, LocalDateTime candleTime) {
         this.etfId = etfId;
         this.openPrice = openPrice;
@@ -68,8 +68,18 @@ public class EtfCandle1m {
         this.candleTime = candleTime;
     }
 
-    public static EtfCandle1m of(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
+    public static EtfCandle1d of(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
                                   long volume, long tradeAmount, LocalDateTime candleTime) {
-        return new EtfCandle1m(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, candleTime);
+        return new EtfCandle1d(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, candleTime);
+    }
+
+    public void updateSnapshot(long openPrice, long highPrice, long lowPrice, long closePrice,
+                                long volume, long tradeAmount) {
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.tradeAmount = tradeAmount;
     }
 }

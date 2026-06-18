@@ -1,4 +1,4 @@
-package com.iduenduen.mtsservice.domain.ls.auth;
+package com.iduenduen.mtsservice.common.ls.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;

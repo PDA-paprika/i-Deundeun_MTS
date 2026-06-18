@@ -1,6 +1,6 @@
-package com.iduenduen.mtsservice.domain.ls.client;
+package com.iduenduen.mtsservice.common.ls.client;
 
-import com.iduenduen.mtsservice.domain.ls.auth.LsTokenManager;
+import com.iduenduen.mtsservice.common.ls.auth.LsTokenManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
