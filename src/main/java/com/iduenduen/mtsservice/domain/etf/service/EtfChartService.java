@@ -5,10 +5,13 @@ import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.etf.dto.ChartCandle;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfChartResponse;
 import com.iduenduen.mtsservice.domain.etf.entity.Etf;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle10mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1dRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1moRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1wRepository;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle30mRepository;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle60mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,11 +29,14 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class EtfChartService {
 
-    private static final Set<String> SUPPORTED_INTERVALS = Set.of("1m", "1d", "1w", "1mo");
+    private static final Set<String> SUPPORTED_INTERVALS = Set.of("1m", "10m", "30m", "60m", "1d", "1w", "1mo");
     private static final LocalDateTime DEFAULT_FROM = LocalDateTime.of(2000, 1, 1, 0, 0);
 
     private final EtfRepository etfRepository;
     private final EtfCandle1mRepository etfCandle1mRepository;
+    private final EtfCandle10mRepository etfCandle10mRepository;
+    private final EtfCandle30mRepository etfCandle30mRepository;
+    private final EtfCandle60mRepository etfCandle60mRepository;
     private final EtfCandle1dRepository etfCandle1dRepository;
     private final EtfCandle1wRepository etfCandle1wRepository;
     private final EtfCandle1moRepository etfCandle1moRepository;
@@ -49,6 +55,21 @@ public class EtfChartService {
 
         List<ChartCandle> candles = switch (interval) {
             case "1m" -> etfCandle1mRepository
+                    .findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(etf.getId(), rangeFrom, rangeTo, pageable)
+                    .stream()
+                    .map(c -> ChartCandle.of(c.getCandleTime(), c.getOpenPrice(), c.getHighPrice(), c.getLowPrice(), c.getClosePrice(), c.getVolume()))
+                    .toList();
+            case "10m" -> etfCandle10mRepository
+                    .findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(etf.getId(), rangeFrom, rangeTo, pageable)
+                    .stream()
+                    .map(c -> ChartCandle.of(c.getCandleTime(), c.getOpenPrice(), c.getHighPrice(), c.getLowPrice(), c.getClosePrice(), c.getVolume()))
+                    .toList();
+            case "30m" -> etfCandle30mRepository
+                    .findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(etf.getId(), rangeFrom, rangeTo, pageable)
+                    .stream()
+                    .map(c -> ChartCandle.of(c.getCandleTime(), c.getOpenPrice(), c.getHighPrice(), c.getLowPrice(), c.getClosePrice(), c.getVolume()))
+                    .toList();
+            case "60m" -> etfCandle60mRepository
                     .findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(etf.getId(), rangeFrom, rangeTo, pageable)
                     .stream()
                     .map(c -> ChartCandle.of(c.getCandleTime(), c.getOpenPrice(), c.getHighPrice(), c.getLowPrice(), c.getClosePrice(), c.getVolume()))
