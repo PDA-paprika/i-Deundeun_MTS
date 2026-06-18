@@ -3,10 +3,16 @@ package com.iduenduen.mtsservice.domain.etf.service;
 import com.iduenduen.mtsservice.common.exception.GeneralException;
 import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.etf.entity.Etf;
+import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle10m;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1d;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1m;
+import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle30m;
+import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle60m;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle10mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1dRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1mRepository;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle30mRepository;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle60mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfRepository;
 import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
 import com.iduenduen.mtsservice.common.ls.stock.service.LsStockPriceService;
@@ -31,6 +37,9 @@ public class EtfPriceService {
     private final EtfRepository etfRepository;
     private final EtfCandle1mRepository etfCandle1mRepository;
     private final EtfCandle1dRepository etfCandle1dRepository;
+    private final EtfCandle10mRepository etfCandle10mRepository;
+    private final EtfCandle30mRepository etfCandle30mRepository;
+    private final EtfCandle60mRepository etfCandle60mRepository;
 
     @Transactional
     public EtfCandle1m fetchAndSaveCurrentPrice(String code) {
@@ -63,6 +72,9 @@ public class EtfPriceService {
         etfCandle1mRepository.save(candle);
 
         upsertTodayCandle(etf.getId(), openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount);
+        upsertBucketCandle(etf.getId(), openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, 10);
+        upsertBucketCandle(etf.getId(), openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, 30);
+        upsertBucketCandle(etf.getId(), openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, 60);
 
         return candle;
     }
@@ -78,5 +90,37 @@ public class EtfPriceService {
                                 EtfCandle1d.of(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, today)
                         )
                 );
+    }
+
+    private void upsertBucketCandle(Long etfId, long openPrice, long highPrice, long lowPrice,
+                                     long closePrice, long volume, long tradeAmount, int bucketMinutes) {
+        LocalDateTime now = LocalDateTime.now();
+        int flooredMinute = now.getMinute() - (now.getMinute() % bucketMinutes);
+        LocalDateTime bucket = now.withMinute(flooredMinute).withSecond(0).withNano(0);
+
+        switch (bucketMinutes) {
+            case 10 -> etfCandle10mRepository.findByEtfIdAndCandleTime(etfId, bucket)
+                    .ifPresentOrElse(
+                            existing -> existing.updateSnapshot(openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount),
+                            () -> etfCandle10mRepository.save(
+                                    EtfCandle10m.of(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, bucket)
+                            )
+                    );
+            case 30 -> etfCandle30mRepository.findByEtfIdAndCandleTime(etfId, bucket)
+                    .ifPresentOrElse(
+                            existing -> existing.updateSnapshot(openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount),
+                            () -> etfCandle30mRepository.save(
+                                    EtfCandle30m.of(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, bucket)
+                            )
+                    );
+            case 60 -> etfCandle60mRepository.findByEtfIdAndCandleTime(etfId, bucket)
+                    .ifPresentOrElse(
+                            existing -> existing.updateSnapshot(openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount),
+                            () -> etfCandle60mRepository.save(
+                                    EtfCandle60m.of(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, bucket)
+                            )
+                    );
+            default -> throw new IllegalArgumentException("Unsupported bucket size: " + bucketMinutes);
+        }
     }
 }
