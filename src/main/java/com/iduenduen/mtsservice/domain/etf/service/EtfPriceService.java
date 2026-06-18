@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +52,7 @@ public class EtfPriceService {
         return candle;
     }
 
-    private void upsertTodayCandle(UUID etfId, long openPrice, long highPrice, long lowPrice,
+    private void upsertTodayCandle(Long etfId, long openPrice, long highPrice, long lowPrice,
                                     long closePrice, long volume, long tradeAmount) {
         LocalDateTime today = LocalDate.now().atStartOfDay();
 

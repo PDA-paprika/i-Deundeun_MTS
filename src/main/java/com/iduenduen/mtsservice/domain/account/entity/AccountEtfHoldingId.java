@@ -14,9 +14,9 @@ import java.io.Serializable;
 @EqualsAndHashCode
 public class AccountEtfHoldingId implements Serializable {
 
-    @Column(name = "external_etf_id", columnDefinition = "CHAR(36)", nullable = false)
+    @Column(name = "external_etf_id", nullable = false)
     private String externalEtfId;
 
-    @Column(name = "account_id", columnDefinition = "CHAR(36)", nullable = false)
-    private String accountId;
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
 }

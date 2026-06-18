@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 
@@ -17,12 +16,12 @@ import java.time.LocalDateTime;
 public class AccountCashHistory {
 
     @Id
-    @UuidGenerator
-    @Column(name = "id", columnDefinition = "CHAR(36)", updatable = false, nullable = false)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", updatable = false, nullable = false)
+    private Long id;
 
-    @Column(name = "account_id", columnDefinition = "CHAR(36)", nullable = false)
-    private String accountId;
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", length = 20, nullable = false)
@@ -34,7 +33,7 @@ public class AccountCashHistory {
     @Column(name = "balance_after", nullable = false)
     private long balanceAfter;
 
-    @Column(name = "reference_id", columnDefinition = "CHAR(36)")
+    @Column(name = "reference_id")
     private String referenceId;
 
     @Enumerated(EnumType.STRING)

@@ -25,7 +25,7 @@ public class EtfPriceScheduler {
             try {
                 etfPriceService.fetchAndSaveCurrentPrice(etf.getCode());
             } catch (Exception e) {
-                log.error("[*] ETF 시세 수집 실패. code={}", etf.getCode(), e);
+          //      log.warn("[*] ETF 시세 수집 실패. code={} - {}", etf.getCode(), e.getMessage());
             }
             Thread.sleep(DELAY_BETWEEN_CALLS_MS);
         }
