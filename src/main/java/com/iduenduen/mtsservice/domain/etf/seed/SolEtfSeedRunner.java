@@ -7,12 +7,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
 @Slf4j
 @Component
+@Order(1)
+@ConditionalOnProperty(prefix = "app.etf.auto-collect", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class SolEtfSeedRunner implements ApplicationRunner {
 

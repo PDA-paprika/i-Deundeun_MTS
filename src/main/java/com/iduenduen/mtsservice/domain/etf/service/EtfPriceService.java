@@ -38,7 +38,7 @@ public class EtfPriceService {
             throw new GeneralException(ErrorStatus.ETF_NOT_FOUND);
         }
 
-        LsStockPriceResponse.T1901OutBlock outBlock;
+        LsStockPriceResponse.T1102OutBlock outBlock;
         try {
             outBlock = lsStockPriceService.getCurrentPrice(code);
         } catch (RestClientException e) {

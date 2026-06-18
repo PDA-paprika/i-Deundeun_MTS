@@ -5,22 +5,24 @@ import lombok.Getter;
 @Getter
 public class LsStockPriceRequest {
 
-    private final T1901InBlock t1901InBlock;
+    private final T1102InBlock t1102InBlock;
 
-    private LsStockPriceRequest(String shcode) {
-        this.t1901InBlock = new T1901InBlock(shcode);
+    private LsStockPriceRequest(String shcode, String exchgubun) {
+        this.t1102InBlock = new T1102InBlock(shcode, exchgubun);
     }
 
-    public static LsStockPriceRequest of(String shcode) {
-        return new LsStockPriceRequest(shcode);
+    public static LsStockPriceRequest of(String shcode, String exchgubun) {
+        return new LsStockPriceRequest(shcode, exchgubun);
     }
 
     @Getter
-    public static class T1901InBlock {
+    public static class T1102InBlock {
         private final String shcode;
+        private final String exchgubun;
 
-        private T1901InBlock(String shcode) {
+        private T1102InBlock(String shcode, String exchgubun) {
             this.shcode = shcode;
+            this.exchgubun = exchgubun;
         }
     }
 }
