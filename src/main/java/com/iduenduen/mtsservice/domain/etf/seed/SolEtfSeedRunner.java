@@ -23,6 +23,11 @@ public class SolEtfSeedRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        if (etfRepository.count() >= SolEtfCodes.CODES.size()) {
+            log.info("[*] SOL ETF 시딩 스킵 (이미 전종목 시딩 완료).");
+            return;
+        }
+
         Set<String> existingCodes = etfRepository.findAll().stream()
                 .map(etf -> etf.getCode())
                 .collect(java.util.stream.Collectors.toSet());

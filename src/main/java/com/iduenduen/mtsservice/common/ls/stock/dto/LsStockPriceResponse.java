@@ -23,5 +23,6 @@ public class LsStockPriceResponse {
         private String high;
         private String low;
         private String value;
+        private String listing;
     }
 }

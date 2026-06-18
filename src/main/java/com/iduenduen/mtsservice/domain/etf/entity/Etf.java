@@ -36,6 +36,9 @@ public class Etf extends BaseEntity {
     @Column(name = "logo_img", nullable = false, length = 250)
     private String logoImg;
 
+    @Column(name = "listing", nullable = false)
+    private long listing;
+
     private Etf(String code, String name, String logoImg) {
         this.code = code;
         this.name = name;
@@ -48,5 +51,9 @@ public class Etf extends BaseEntity {
 
     public void updateName(String name) {
         this.name = name;
+    }
+
+    public void updateListing(long listing) {
+        this.listing = listing;
     }
 }
