@@ -1,17 +1,21 @@
 package com.iduenduen.mtsservice.domain.etf.service;
 
+import com.iduenduen.mtsservice.common.exception.GeneralException;
+import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.etf.entity.Etf;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1d;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1m;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1dRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfRepository;
+import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
 import com.iduenduen.mtsservice.common.ls.stock.service.LsStockPriceService;
 import com.iduenduen.mtsservice.common.ls.stock.dto.LsStockPriceResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +25,7 @@ import java.time.LocalDateTime;
 public class EtfPriceService {
 
     private static final long MILLION = 1_000_000L;
+    private static final long THOUSAND = 1_000L;
 
     private final LsStockPriceService lsStockPriceService;
     private final EtfRepository etfRepository;
@@ -29,10 +34,20 @@ public class EtfPriceService {
 
     @Transactional
     public EtfCandle1m fetchAndSaveCurrentPrice(String code) {
-        LsStockPriceResponse.T1901OutBlock outBlock = lsStockPriceService.getCurrentPrice(code);
+        if (!SolEtfCodes.CODES.contains(code)) {
+            throw new GeneralException(ErrorStatus.ETF_NOT_FOUND);
+        }
+
+        LsStockPriceResponse.T1901OutBlock outBlock;
+        try {
+            outBlock = lsStockPriceService.getCurrentPrice(code);
+        } catch (RestClientException e) {
+            throw new GeneralException(ErrorStatus.LS_API_ERROR);
+        }
 
         Etf etf = etfRepository.findByCode(code)
                 .orElseGet(() -> etfRepository.save(Etf.create(code, outBlock.getHname())));
+        etf.updateListing(Long.parseLong(outBlock.getListing()) * THOUSAND);
 
         long openPrice = Long.parseLong(outBlock.getOpen());
         long highPrice = Long.parseLong(outBlock.getHigh());
