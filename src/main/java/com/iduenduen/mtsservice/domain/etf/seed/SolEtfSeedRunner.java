@@ -40,7 +40,7 @@ public class SolEtfSeedRunner implements ApplicationRunner {
                 etfPriceService.fetchAndSaveCurrentPrice(code);
                 log.info("[*] SOL ETF 시딩 완료. code={}", code);
             } catch (Exception e) {
-                log.error("[*] SOL ETF 시딩 실패. code={}", code, e);
+            //    log.warn("[*] SOL ETF 시딩 실패. code={} - {}", code, e.getMessage());
             }
             Thread.sleep(DELAY_BETWEEN_CALLS_MS);
         }

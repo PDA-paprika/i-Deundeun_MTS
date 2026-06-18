@@ -24,7 +24,7 @@ public class AccountController {
     @GetMapping("/balance")
     @Operation(summary = "예수금 조회", description = "D+0/1/2 예수금을 조회합니다.")
     public ResponseEntity<ApiResponse<AccountBalanceResponse>> getBalance(
-            @RequestParam String accountId) {
+            @RequestParam Long accountId) {
         return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getBalance(accountId));
     }
 }

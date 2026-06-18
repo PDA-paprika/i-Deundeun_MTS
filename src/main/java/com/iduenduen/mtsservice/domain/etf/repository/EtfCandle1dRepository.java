@@ -7,11 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-public interface EtfCandle1dRepository extends JpaRepository<EtfCandle1d, UUID> {
 
-    Optional<EtfCandle1d> findByEtfIdAndCandleTime(UUID etfId, LocalDateTime candleTime);
+public interface EtfCandle1dRepository extends JpaRepository<EtfCandle1d, Long> {
 
-    List<EtfCandle1d> findTop2ByEtfIdOrderByCandleTimeDesc(UUID etfId);
+    Optional<EtfCandle1d> findByEtfIdAndCandleTime(Long etfId, LocalDateTime candleTime);
+
+    List<EtfCandle1d> findTop2ByEtfIdOrderByCandleTimeDesc(Long etfId);
 }

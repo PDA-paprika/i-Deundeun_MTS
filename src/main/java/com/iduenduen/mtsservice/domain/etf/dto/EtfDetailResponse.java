@@ -4,12 +4,10 @@ import com.iduenduen.mtsservice.domain.etf.entity.Etf;
 
 import lombok.Getter;
 
-import java.util.UUID;
-
 @Getter
 public class EtfDetailResponse {
 
-    private final UUID etfId;
+    private final Long etfId;
     private final String etfCode;
     private final String etfName;
     private final String logoImg;
