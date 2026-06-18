@@ -24,7 +24,13 @@ public enum ErrorStatus implements BaseStatus {
     /**
      * Account
      */
-    ACCOUNT_NOT_FOUND("ACC_404", HttpStatus.NOT_FOUND, "계좌를 찾을 수 없습니다.");
+    ACCOUNT_NOT_FOUND("ACC_404", HttpStatus.NOT_FOUND, "계좌를 찾을 수 없습니다."),
+
+    /**
+     * ETF
+     */
+    ETF_NOT_FOUND("ETF_404", HttpStatus.NOT_FOUND, "존재하지 않는 ETF 종목입니다."),
+    LS_API_ERROR("ETF_502", HttpStatus.BAD_GATEWAY, "LS증권 API 호출에 실패했습니다.");
 
     private final String code;
     private final HttpStatus httpStatus;
