@@ -7,11 +7,11 @@ import lombok.Setter;
 @Setter
 public class LsStockPriceResponse {
 
-    private T1901OutBlock t1901OutBlock;
+    private T1102OutBlock t1102OutBlock;
 
     @Getter
     @Setter
-    public static class T1901OutBlock {
+    public static class T1102OutBlock {
         private String shcode;
         private String hname;
         private String price;

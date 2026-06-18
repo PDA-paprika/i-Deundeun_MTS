@@ -11,14 +11,15 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LsStockPriceService {
 
-    private static final String PATH = "/stock/etf";
-    private static final String TR_CD = "t1901";
+    private static final String PATH = "/stock/market-data";
+    private static final String TR_CD = "t1102";
+    private static final String EXCHANGE_KRX = "K";
 
     private final LsRestClient lsRestClient;
 
-    public LsStockPriceResponse.T1901OutBlock getCurrentPrice(String shcode) {
-        LsStockPriceRequest request = LsStockPriceRequest.of(shcode);
+    public LsStockPriceResponse.T1102OutBlock getCurrentPrice(String shcode) {
+        LsStockPriceRequest request = LsStockPriceRequest.of(shcode, EXCHANGE_KRX);
         LsStockPriceResponse response = lsRestClient.post(PATH, TR_CD, request, LsStockPriceResponse.class);
-        return response.getT1901OutBlock();
+        return response.getT1102OutBlock();
     }
 }
