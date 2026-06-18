@@ -11,6 +11,6 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
     List<TradeOrder> findByAccountIdAndStatus(Long accountId, OrderStatus status);
     List<TradeOrder> findByAccountIdAndSideAndStatus(Long accountId, OrderSide side, OrderStatus status);
 
-    List<TradeOrder> findByAccountIdAndStatusIn(String accountId, List<OrderStatus> statuses);
-    List<TradeOrder> findByAccountIdAndSideAndStatusIn(String accountId, OrderSide side, List<OrderStatus> statuses);
+    List<TradeOrder> findByAccountIdAndStatusIn(Long accountId, List<OrderStatus> statuses);
+    List<TradeOrder> findByAccountIdAndSideAndStatusIn(Long accountId, OrderSide side, List<OrderStatus> statuses);
 }

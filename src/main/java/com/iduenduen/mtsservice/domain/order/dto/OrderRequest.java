@@ -8,10 +8,12 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class OrderRequest {
-    private String accountId;
+    private Long accountId;
+    private Long parentId;
+    private String accountNumber;  // Core 서버 연동 전 임시로 요청에서 받음
     private String etfCode;
     private OrderSide side;
     private OrderType orderType;
-    private Long price;  // MARKET이면 null
+    private Long price;
     private int qty;
 }

@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class OrderResponse {
-    private String orderId;
+    private Long orderId;
     private String status;
     private String message;
 }

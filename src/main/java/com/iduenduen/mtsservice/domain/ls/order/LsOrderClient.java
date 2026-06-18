@@ -1,6 +1,6 @@
 package com.iduenduen.mtsservice.domain.ls.order;
 
-import com.iduenduen.mtsservice.domain.ls.client.LsRestClient;
+import com.iduenduen.mtsservice.common.ls.client.LsRestClient;
 import com.iduenduen.mtsservice.domain.ls.order.dto.LsOrderRequest;
 import com.iduenduen.mtsservice.domain.ls.order.dto.LsOrderResponse;
 import com.iduenduen.mtsservice.domain.order.enums.OrderSide;

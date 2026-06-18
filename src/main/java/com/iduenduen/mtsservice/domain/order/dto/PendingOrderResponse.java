@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class PendingOrderResponse {
-    private String orderId;
+    private Long orderId;
     private String etfCode;
     private OrderSide side;
     private OrderType orderType;

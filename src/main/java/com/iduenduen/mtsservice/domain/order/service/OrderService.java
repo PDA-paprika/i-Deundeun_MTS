@@ -1,12 +1,5 @@
 package com.iduenduen.mtsservice.domain.order.service;
 
-import com.iduenduen.mtsservice.common.exception.GeneralException;
-import com.iduenduen.mtsservice.common.status.ErrorStatus;
-import com.iduenduen.mtsservice.domain.account.entity.Account;
-import com.iduenduen.mtsservice.domain.account.entity.AccountEtfHolding;
-import com.iduenduen.mtsservice.domain.account.entity.AccountEtfHoldingId;
-import com.iduenduen.mtsservice.domain.account.repository.AccountEtfHoldingRepository;
-import com.iduenduen.mtsservice.domain.account.repository.AccountRepository;
 import com.iduenduen.mtsservice.domain.ls.order.LsOrderClient;
 import com.iduenduen.mtsservice.domain.ls.order.dto.LsOrderResponse;
 import com.iduenduen.mtsservice.domain.order.dto.OrderRequest;
@@ -15,7 +8,6 @@ import com.iduenduen.mtsservice.domain.order.dto.PendingOrderResponse;
 import com.iduenduen.mtsservice.domain.order.entity.TradeOrder;
 import com.iduenduen.mtsservice.domain.order.enums.OrderSide;
 import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
-import com.iduenduen.mtsservice.domain.order.enums.OrderType;
 import com.iduenduen.mtsservice.domain.order.repository.TradeOrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,37 +20,15 @@ import java.util.List;
 public class OrderService {
 
     private final TradeOrderRepository tradeOrderRepository;
-    private final AccountRepository accountRepository;
-    private final AccountEtfHoldingRepository accountEtfHoldingRepository;
     private final LsOrderClient lsOrderClient;
 
     @Transactional
     public OrderResponse submitOrder(OrderRequest request) {
-        Account account = accountRepository.findById(request.getAccountId())
-                .orElseThrow(() -> new GeneralException(ErrorStatus.ACCOUNT_NOT_FOUND));
-
-        // 매수 시 잔고 검증
-        if (request.getSide() == OrderSide.BUY) {
-            long required = request.getOrderType() == OrderType.MARKET
-                    ? 0L : request.getPrice() * request.getQty();
-            if (account.getAvailableAmt() < required) {
-                throw new GeneralException(ErrorStatus.INSUFFICIENT_BALANCE);
-            }
-        }
-
-        // 매도 시 보유 수량 검증
-        if (request.getSide() == OrderSide.SELL) {
-            AccountEtfHoldingId holdingId = new AccountEtfHoldingId(request.getEtfCode(), request.getAccountId());
-            AccountEtfHolding holding = accountEtfHoldingRepository.findById(holdingId)
-                    .orElseThrow(() -> new GeneralException(ErrorStatus.INSUFFICIENT_HOLDING));
-            if (holding.getQty() < request.getQty()) {
-                throw new GeneralException(ErrorStatus.INSUFFICIENT_HOLDING);
-            }
-        }
+        // TODO: Core 서버 API 호출로 잔고/보유수량 검증 필요
 
         // LS API 주문 제출
         LsOrderResponse lsResponse = lsOrderClient.submitOrder(
-                account.getAccountNumber(),
+                request.getAccountNumber(),
                 request.getEtfCode(),
                 request.getSide(),
                 request.getOrderType(),
@@ -69,7 +39,8 @@ public class OrderService {
         // 주문 저장
         TradeOrder order = TradeOrder.builder()
                 .accountId(request.getAccountId())
-                .parentId(account.getParentId())
+                .parentId(request.getParentId())
+                .etfId(0L) // TODO: ETF 조회 후 수정
                 .side(request.getSide())
                 .orderType(request.getOrderType())
                 .price(request.getPrice())
@@ -86,7 +57,7 @@ public class OrderService {
                 .build();
     }
 
-    public List<PendingOrderResponse> getPendingOrders(String accountId, String filter) {
+    public List<PendingOrderResponse> getPendingOrders(Long accountId, String filter) {
         List<OrderStatus> statuses = List.of(OrderStatus.PENDING, OrderStatus.PARTIALLY_EXECUTED);
 
         List<TradeOrder> orders;
