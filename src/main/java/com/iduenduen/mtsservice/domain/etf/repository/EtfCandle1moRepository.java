@@ -2,6 +2,7 @@ package com.iduenduen.mtsservice.domain.etf.repository;
 
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1mo;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -15,4 +16,7 @@ public interface EtfCandle1moRepository extends JpaRepository<EtfCandle1mo, Long
     List<EtfCandle1mo> findByEtfIdOrderByCandleTimeDesc(Long etfId);
 
     boolean existsByEtfId(Long etfId);
+
+    List<EtfCandle1mo> findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(
+            Long etfId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
