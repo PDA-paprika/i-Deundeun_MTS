@@ -16,14 +16,15 @@ import java.time.LocalDateTime;
 public class Account {
 
     @Id
-    @Column(name = "account_id", columnDefinition = "CHAR(36)", nullable = false, updatable = false)
-    private String accountId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "account_id", nullable = false, updatable = false)
+    private Long accountId;
 
-    @Column(name = "child_id", columnDefinition = "CHAR(36)")
-    private String childId;
+    @Column(name = "child_id")
+    private Long childId;
 
-    @Column(name = "parent_id", columnDefinition = "CHAR(36)")
-    private String parentId;
+    @Column(name = "parent_id")
+    private Long parentId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_type", length = 10, nullable = false)

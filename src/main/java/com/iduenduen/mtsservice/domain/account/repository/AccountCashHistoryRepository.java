@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface AccountCashHistoryRepository extends JpaRepository<AccountCashHistory, String> {
-    List<AccountCashHistory> findByAccountIdOrderByOccurredAtDesc(String accountId);
+public interface AccountCashHistoryRepository extends JpaRepository<AccountCashHistory, Long> {
+    List<AccountCashHistory> findByAccountIdOrderByOccurredAtDesc(Long accountId);
 }

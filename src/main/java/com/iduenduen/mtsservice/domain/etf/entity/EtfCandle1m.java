@@ -12,7 +12,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,11 +25,11 @@ import lombok.NoArgsConstructor;
 public class EtfCandle1m {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "etf_id", nullable = false)
-    private UUID etfId;
+    private Long etfId;
 
     @Column(name = "open_price", nullable = false)
     private long openPrice;
@@ -57,7 +56,7 @@ public class EtfCandle1m {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    private EtfCandle1m(UUID etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
+    private EtfCandle1m(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
                          long volume, long tradeAmount, LocalDateTime candleTime) {
         this.etfId = etfId;
         this.openPrice = openPrice;
@@ -69,7 +68,7 @@ public class EtfCandle1m {
         this.candleTime = candleTime;
     }
 
-    public static EtfCandle1m of(UUID etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
+    public static EtfCandle1m of(Long etfId, long openPrice, long highPrice, long lowPrice, long closePrice,
                                   long volume, long tradeAmount, LocalDateTime candleTime) {
         return new EtfCandle1m(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, candleTime);
     }

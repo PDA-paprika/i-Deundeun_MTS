@@ -14,7 +14,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
 
-    public AccountBalanceResponse getBalance(String accountId) {
+    public AccountBalanceResponse getBalance(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.ACCOUNT_NOT_FOUND));
 

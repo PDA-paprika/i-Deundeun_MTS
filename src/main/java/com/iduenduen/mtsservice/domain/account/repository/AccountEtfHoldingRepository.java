@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface AccountEtfHoldingRepository extends JpaRepository<AccountEtfHolding, AccountEtfHoldingId> {
-    List<AccountEtfHolding> findByIdAccountId(String accountId);
+    List<AccountEtfHolding> findByIdAccountId(Long accountId);
 }
