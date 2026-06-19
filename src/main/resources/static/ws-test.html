@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF WebSocket Test</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --line: #d9dee7;
+            --text: #1f2937;
+            --muted: #667085;
+            --accent: #166534;
+            --danger: #b42318;
+            --warn: #b54708;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            margin: 0 0 28px;
+            color: var(--muted);
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 18px;
+        }
+
+        .panel h2 {
+            margin: 0 0 14px;
+            font-size: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            font: inherit;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            background: #1f2937;
+            color: #fff;
+        }
+
+        button.secondary {
+            background: #6b7280;
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        .status {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f1f3f6;
+            font-size: 14px;
+        }
+
+        .status.connected {
+            color: var(--accent);
+        }
+
+        .status.error {
+            color: var(--danger);
+        }
+
+        .status.closed {
+            color: var(--warn);
+        }
+
+        .log {
+            margin-top: 16px;
+            height: 360px;
+            overflow: auto;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 12px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .help {
+            margin-top: 20px;
+            padding: 16px 18px;
+            border-left: 4px solid #1f2937;
+            background: #fff;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <h1>ETF WebSocket Test</h1>
+    <p class="subtitle">브라우저에서 WebSocket 연결, 구독, 수신 메시지를 바로 확인하는 테스트 페이지입니다.</p>
+
+    <div class="grid">
+        <section class="panel">
+            <h2>Price</h2>
+            <label for="price-url">WebSocket URL</label>
+            <input id="price-url" value="ws://localhost:8080/v1/etf/price">
+
+            <label for="price-codes">ETF 코드 목록</label>
+            <input id="price-codes" value="123456, 789012">
+
+            <div class="row">
+                <button id="price-connect">연결 및 구독</button>
+                <button id="price-send" class="secondary">구독 재전송</button>
+                <button id="price-close" class="danger">연결 종료</button>
+            </div>
+
+            <div id="price-status" class="status">대기 중</div>
+            <div id="price-log" class="log"></div>
+        </section>
+
+        <section class="panel">
+            <h2>Orderbook</h2>
+            <label for="orderbook-url">WebSocket URL</label>
+            <input id="orderbook-url" value="ws://localhost:8080/v1/etf/orderbook">
+
+            <label for="orderbook-code">ETF 코드</label>
+            <input id="orderbook-code" value="123456">
+
+            <div class="row">
+                <button id="orderbook-connect">연결 및 구독</button>
+                <button id="orderbook-send" class="secondary">구독 재전송</button>
+                <button id="orderbook-close" class="danger">연결 종료</button>
+            </div>
+
+            <div id="orderbook-status" class="status">대기 중</div>
+            <div id="orderbook-log" class="log"></div>
+        </section>
+    </div>
+
+    <div class="help">
+        연결 직후 상태가 <code>OPEN</code>으로 바뀌고 브라우저 Network 탭의 WS 응답 코드가
+        <code>101</code>이면 핸드셰이크는 성공입니다. 메시지가 안 오면 구독 코드와 서버의 실시간 데이터 발행 여부를 확인하세요.
+    </div>
+</div>
+
+<script>
+    function createWsTester(options) {
+        const statusEl = document.getElementById(options.statusId);
+        const logEl = document.getElementById(options.logId);
+        const urlEl = document.getElementById(options.urlId);
+        const connectBtn = document.getElementById(options.connectButtonId);
+        const sendBtn = document.getElementById(options.sendButtonId);
+        const closeBtn = document.getElementById(options.closeButtonId);
+        let socket = null;
+
+        function now() {
+            return new Date().toLocaleTimeString("ko-KR", { hour12: false });
+        }
+
+        function setStatus(text, className) {
+            statusEl.className = "status" + (className ? " " + className : "");
+            statusEl.textContent = text;
+        }
+
+        function log(message) {
+            logEl.textContent += "[" + now() + "] " + message + "\n";
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function sendSubscription() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                log("구독 전송 실패: WebSocket이 열려 있지 않습니다.");
+                return;
+            }
+
+            const payload = options.payloadBuilder();
+            socket.send(JSON.stringify(payload));
+            log("구독 전송: " + JSON.stringify(payload));
+        }
+
+        function connect() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                log("이미 연결되어 있습니다.");
+                sendSubscription();
+                return;
+            }
+
+            const url = urlEl.value.trim();
+            socket = new WebSocket(url);
+            setStatus("연결 중", "");
+            log("연결 시도: " + url);
+
+            socket.onopen = () => {
+                setStatus("OPEN", "connected");
+                log("연결 성공");
+                sendSubscription();
+            };
+
+            socket.onmessage = (event) => {
+                log("수신: " + event.data);
+            };
+
+            socket.onerror = () => {
+                setStatus("ERROR", "error");
+                log("오류 발생");
+            };
+
+            socket.onclose = (event) => {
+                setStatus("CLOSED (" + event.code + ")", "closed");
+                log("연결 종료: code=" + event.code + ", reason=" + (event.reason || "-"));
+            };
+        }
+
+        function close() {
+            if (!socket) {
+                log("종료할 연결이 없습니다.");
+                return;
+            }
+            socket.close();
+        }
+
+        connectBtn.addEventListener("click", connect);
+        sendBtn.addEventListener("click", sendSubscription);
+        closeBtn.addEventListener("click", close);
+    }
+
+    createWsTester({
+        statusId: "price-status",
+        logId: "price-log",
+        urlId: "price-url",
+        connectButtonId: "price-connect",
+        sendButtonId: "price-send",
+        closeButtonId: "price-close",
+        payloadBuilder: () => {
+            const raw = document.getElementById("price-codes").value;
+            const codes = raw.split(",").map(code => code.trim()).filter(Boolean);
+            return {
+                action: "subscribe",
+                etf_codes: codes
+            };
+        }
+    });
+
+    createWsTester({
+        statusId: "orderbook-status",
+        logId: "orderbook-log",
+        urlId: "orderbook-url",
+        connectButtonId: "orderbook-connect",
+        sendButtonId: "orderbook-send",
+        closeButtonId: "orderbook-close",
+        payloadBuilder: () => ({
+            action: "subscribe",
+            etf_code: document.getElementById("orderbook-code").value.trim()
+        })
+    });
+</script>
+</body>
+</html>
