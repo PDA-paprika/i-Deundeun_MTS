@@ -4,15 +4,12 @@ import com.iduenduen.mtsservice.common.response.ApiResponse;
 import com.iduenduen.mtsservice.common.status.SuccessStatus;
 import com.iduenduen.mtsservice.domain.order.dto.OrderRequest;
 import com.iduenduen.mtsservice.domain.order.dto.OrderResponse;
-import com.iduenduen.mtsservice.domain.order.dto.PendingOrderResponse;
 import com.iduenduen.mtsservice.domain.order.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,13 +24,5 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> submitOrder(
             @RequestBody OrderRequest request) {
         return ApiResponse.success(SuccessStatus.SUCCESS_200, orderService.submitOrder(request));
-    }
-
-    @GetMapping("/pending")
-    @Operation(summary = "미체결 주문 조회", description = "미체결 주문 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<List<PendingOrderResponse>>> getPendingOrders(
-            @RequestParam Long accountId,
-            @RequestParam(defaultValue = "ALL") String filter) {
-        return ApiResponse.success(SuccessStatus.SUCCESS_200, orderService.getPendingOrders(accountId, filter));
     }
 }
