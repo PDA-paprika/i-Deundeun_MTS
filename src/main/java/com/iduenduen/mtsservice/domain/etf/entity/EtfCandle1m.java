@@ -72,4 +72,14 @@ public class EtfCandle1m {
                                   long volume, long tradeAmount, LocalDateTime candleTime) {
         return new EtfCandle1m(etfId, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount, candleTime);
     }
+
+    public void updateSnapshot(long openPrice, long highPrice, long lowPrice, long closePrice,
+                                long volume, long tradeAmount) {
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.tradeAmount = tradeAmount;
+    }
 }

@@ -12,13 +12,11 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class LsTokenManager {
 
+    private static final String TOKEN_KEY = "ls:access-token";
+    private static final long REFRESH_MARGIN_SECONDS = 300;
+
     private final LsAuthClient lsAuthClient;
     private final StringRedisTemplate redisTemplate;
-
-    private static final String TOKEN_KEY = "ls:access-token";
-
-    // 만료 5분 전에 캐시를 비워 미리 갱신되도록 함
-    private static final long REFRESH_MARGIN_SECONDS = 300;
 
     public String getToken() {
         String token = redisTemplate.opsForValue().get(TOKEN_KEY);
@@ -34,13 +32,13 @@ public class LsTokenManager {
             return cached;
         }
 
-        log.info("LS 토큰 갱신 중...");
+        log.info("Refreshing LS access token.");
         LsTokenResponse response = lsAuthClient.requestToken();
         String accessToken = response.getAccessToken();
         long ttlSeconds = Math.max(response.getExpiresIn() - REFRESH_MARGIN_SECONDS, 0);
 
         redisTemplate.opsForValue().set(TOKEN_KEY, accessToken, Duration.ofSeconds(ttlSeconds));
-        log.info("LS 토큰 갱신 완료. TTL: {}초", ttlSeconds);
+        log.info("LS access token refreshed. ttlSeconds={}", ttlSeconds);
         return accessToken;
     }
 }

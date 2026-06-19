@@ -48,6 +48,22 @@ public class EtfQueryService {
                 ? etfRepository.findAll()
                 : etfRepository.findByNameContainingIgnoreCase(q);
 
+        return buildListResponse(etfs, sort, page, limit);
+    }
+
+    public EtfListResponse searchEtfs(String keyword, int page, int limit) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new GeneralException(ErrorStatus.BAD_REQUEST);
+        }
+
+        List<Etf> etfs = etfRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(keyword, keyword);
+        return buildListResponse(etfs, "name", page, limit);
+    }
+
+    private EtfListResponse buildListResponse(List<Etf> etfs, String sort, int page, int limit) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedLimit = Math.max(limit, 1);
+
         List<RankedItem> rankedItems = etfs.stream()
                 .map(this::toRankedItem)
                 .filter(item -> item != null)
@@ -55,8 +71,8 @@ public class EtfQueryService {
                 .toList();
 
         long totalCount = rankedItems.size();
-        int fromIndex = Math.min(page * limit, rankedItems.size());
-        int toIndex = Math.min(fromIndex + limit, rankedItems.size());
+        int fromIndex = Math.min(normalizedPage * normalizedLimit, rankedItems.size());
+        int toIndex = Math.min(fromIndex + normalizedLimit, rankedItems.size());
 
         List<EtfListItem> pageItems = rankedItems.subList(fromIndex, toIndex).stream()
                 .map(RankedItem::listItem)

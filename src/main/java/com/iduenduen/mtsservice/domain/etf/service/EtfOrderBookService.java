@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -47,21 +48,35 @@ public class EtfOrderBookService {
             throw new GeneralException(ErrorStatus.LS_API_ERROR);
         }
 
-        LocalDateTime snapshotAt = LocalDateTime.now().withNano(0);
-        List<OrderBookSnapshot> snapshots = List.of(
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_ASK, 1, outBlock.getOfferho1(), outBlock.getOfferrem1(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_ASK, 2, outBlock.getOfferho2(), outBlock.getOfferrem2(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_ASK, 3, outBlock.getOfferho3(), outBlock.getOfferrem3(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_ASK, 4, outBlock.getOfferho4(), outBlock.getOfferrem4(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_ASK, 5, outBlock.getOfferho5(), outBlock.getOfferrem5(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_BID, 1, outBlock.getBidho1(), outBlock.getBidrem1(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_BID, 2, outBlock.getBidho2(), outBlock.getBidrem2(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_BID, 3, outBlock.getBidho3(), outBlock.getBidrem3(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_BID, 4, outBlock.getBidho4(), outBlock.getBidrem4(), snapshotAt),
-                snapshot(etf.getId(), OrderBookSnapshot.SIDE_BID, 5, outBlock.getBidho5(), outBlock.getBidrem5(), snapshotAt)
+        persistSnapshot(
+                etf.getId(),
+                new long[]{parse(outBlock.getOfferho1()), parse(outBlock.getOfferho2()), parse(outBlock.getOfferho3()), parse(outBlock.getOfferho4()), parse(outBlock.getOfferho5())},
+                new long[]{parse(outBlock.getOfferrem1()), parse(outBlock.getOfferrem2()), parse(outBlock.getOfferrem3()), parse(outBlock.getOfferrem4()), parse(outBlock.getOfferrem5())},
+                new long[]{parse(outBlock.getBidho1()), parse(outBlock.getBidho2()), parse(outBlock.getBidho3()), parse(outBlock.getBidho4()), parse(outBlock.getBidho5())},
+                new long[]{parse(outBlock.getBidrem1()), parse(outBlock.getBidrem2()), parse(outBlock.getBidrem3()), parse(outBlock.getBidrem4()), parse(outBlock.getBidrem5())}
         );
+    }
 
+    @Transactional
+    public void applyRealtimeOrderBook(String code, long[] askPrices, long[] askQtys, long[] bidPrices, long[] bidQtys) {
+        Etf etf = etfRepository.findByCode(code)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));
+
+        persistSnapshot(etf.getId(), askPrices, askQtys, bidPrices, bidQtys);
+    }
+
+    private void persistSnapshot(Long etfId, long[] askPrices, long[] askQtys, long[] bidPrices, long[] bidQtys) {
+        LocalDateTime snapshotAt = LocalDateTime.now().withNano(0);
+        List<OrderBookSnapshot> snapshots = new ArrayList<>();
+        for (int i = 0; i < LEVELS; i++) {
+            snapshots.add(OrderBookSnapshot.of(etfId, OrderBookSnapshot.SIDE_ASK, i + 1, askPrices[i], askQtys[i], snapshotAt));
+            snapshots.add(OrderBookSnapshot.of(etfId, OrderBookSnapshot.SIDE_BID, i + 1, bidPrices[i], bidQtys[i], snapshotAt));
+        }
         orderBookSnapshotRepository.saveAll(snapshots);
+    }
+
+    private long parse(String value) {
+        return Long.parseLong(value);
     }
 
     @Transactional(readOnly = true)
@@ -87,9 +102,5 @@ public class EtfOrderBookService {
                 .toList();
 
         return EtfOrderBookResponse.of(code, snapshotAt, asks, bids);
-    }
-
-    private OrderBookSnapshot snapshot(Long etfId, String side, int step, String price, String qty, LocalDateTime snapshotAt) {
-        return OrderBookSnapshot.of(etfId, side, step, Long.parseLong(price), Long.parseLong(qty), snapshotAt);
     }
 }

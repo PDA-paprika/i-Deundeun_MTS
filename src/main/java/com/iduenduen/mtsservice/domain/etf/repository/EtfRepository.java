@@ -13,4 +13,6 @@ public interface EtfRepository extends JpaRepository<Etf, Long> {
     Optional<Etf> findByCode(String code);
 
     List<Etf> findByNameContainingIgnoreCase(String name);
+
+    List<Etf> findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(String name, String code);
 }
