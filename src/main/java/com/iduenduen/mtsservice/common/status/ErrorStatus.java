@@ -27,6 +27,12 @@ public enum ErrorStatus implements BaseStatus {
     ACCOUNT_NOT_FOUND("ACC_404", HttpStatus.NOT_FOUND, "계좌를 찾을 수 없습니다."),
 
     /**
+     * Order
+     */
+    INSUFFICIENT_BALANCE("ORD_422", HttpStatus.UNPROCESSABLE_ENTITY, "잔고가 부족합니다."),
+    INSUFFICIENT_HOLDING("ORD_422", HttpStatus.UNPROCESSABLE_ENTITY, "보유 수량이 부족합니다."),
+
+    /**
      * ETF
      */
     ETF_NOT_FOUND("ETF_404", HttpStatus.NOT_FOUND, "존재하지 않는 ETF 종목입니다."),

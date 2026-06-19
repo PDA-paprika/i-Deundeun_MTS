@@ -4,6 +4,8 @@ import com.iduenduen.mtsservice.domain.order.enums.OrderSide;
 import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
 import com.iduenduen.mtsservice.domain.order.enums.OrderType;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -15,6 +17,8 @@ import java.time.LocalDateTime;
 @Table(name = "trade_orders")
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TradeOrder {
 
     @Id
@@ -59,4 +63,5 @@ public class TradeOrder {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
 }
