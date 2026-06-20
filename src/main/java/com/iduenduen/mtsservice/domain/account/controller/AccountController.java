@@ -3,6 +3,7 @@ package com.iduenduen.mtsservice.domain.account.controller;
 import com.iduenduen.mtsservice.common.response.ApiResponse;
 import com.iduenduen.mtsservice.common.status.SuccessStatus;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
+import com.iduenduen.mtsservice.domain.account.dto.AccountSummaryResponse;
 import com.iduenduen.mtsservice.domain.account.service.AccountService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,5 +24,12 @@ public class AccountController {
     public ResponseEntity<ApiResponse<AccountBalanceResponse>> getBalance(
             @RequestParam Long accountId) {
         return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getBalance(accountId));
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "계좌 요약 조회", description = "예수금 및 보유 종목 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<AccountSummaryResponse>> getSummary(
+            @RequestParam Long accountId) {
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getSummary(accountId));
     }
 }
