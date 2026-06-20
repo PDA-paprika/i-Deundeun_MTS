@@ -1,5 +1,6 @@
 package com.iduenduen.mtsservice.common.core;
 
+import com.iduenduen.mtsservice.common.core.dto.CoreAccountHoldingsResponse;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -23,5 +24,14 @@ public class CoreAccountClient {
                 .toUriString();
 
         return restTemplate.getForObject(url, AccountBalanceResponse.class);
+    }
+
+    public CoreAccountHoldingsResponse getHoldings(Long accountId) {
+        String url = UriComponentsBuilder
+                .fromUriString(coreBaseUrl + "/account/holdings")
+                .queryParam("accountId", accountId)
+                .toUriString();
+
+        return restTemplate.getForObject(url, CoreAccountHoldingsResponse.class);
     }
 }
