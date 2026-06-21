@@ -32,6 +32,7 @@ public class OrderService {
         if (request.getSide() == OrderSide.BUY) {
             // 매수: 잔고 검증
             AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId());
+            // TODO: 시장가 검증 - Redis etf:price:{etfId} 저장 로직 추가 후 구현 필요
             long orderAmount = request.getOrderType() == OrderType.MARKET ? 0L : request.getPrice() * request.getQty();
             if (balance.getAvailableAmt() < orderAmount) {
                 throw new GeneralException(ErrorStatus.INSUFFICIENT_BALANCE);
