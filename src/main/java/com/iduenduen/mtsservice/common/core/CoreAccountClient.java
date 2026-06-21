@@ -34,4 +34,6 @@ public class CoreAccountClient {
 
         return restTemplate.getForObject(url, CoreAccountHoldingsResponse.class);
     }
+
+
 }

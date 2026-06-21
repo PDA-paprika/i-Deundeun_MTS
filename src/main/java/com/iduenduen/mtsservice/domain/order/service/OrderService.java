@@ -1,11 +1,18 @@
 package com.iduenduen.mtsservice.domain.order.service;
 
+import com.iduenduen.mtsservice.common.core.CoreAccountClient;
+import com.iduenduen.mtsservice.common.core.dto.CoreAccountHoldingsResponse;
+import com.iduenduen.mtsservice.common.exception.GeneralException;
+import com.iduenduen.mtsservice.common.status.ErrorStatus;
+import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
 import com.iduenduen.mtsservice.domain.ls.order.LsOrderClient;
 import com.iduenduen.mtsservice.domain.ls.order.dto.LsOrderResponse;
 import com.iduenduen.mtsservice.domain.order.dto.OrderRequest;
 import com.iduenduen.mtsservice.domain.order.dto.OrderResponse;
 import com.iduenduen.mtsservice.domain.order.entity.TradeOrder;
+import com.iduenduen.mtsservice.domain.order.enums.OrderSide;
 import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
+import com.iduenduen.mtsservice.domain.order.enums.OrderType;
 import com.iduenduen.mtsservice.domain.order.repository.TradeOrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +24,30 @@ public class OrderService {
 
     private final TradeOrderRepository tradeOrderRepository;
     private final LsOrderClient lsOrderClient;
+    private final CoreAccountClient coreAccountClient;
 
     @Transactional
     public OrderResponse submitOrder(OrderRequest request) {
-        // TODO: Core 서버 API 호출로 잔고/보유수량 검증 필요
+
+        if (request.getSide() == OrderSide.BUY) {
+            // 매수: 잔고 검증
+            AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId());
+            long orderAmount = request.getOrderType() == OrderType.MARKET ? 0L : request.getPrice() * request.getQty();
+            if (balance.getAvailableAmt() < orderAmount) {
+                throw new GeneralException(ErrorStatus.INSUFFICIENT_BALANCE);
+            }
+        } else {
+            // 매도: 보유수량 검증
+            CoreAccountHoldingsResponse holdings = coreAccountClient.getHoldings(request.getAccountId());
+            int heldQty = holdings.getHoldings().stream()
+                    .filter(h -> h.getEtfId().equals(request
+                            .getEtfId()))
+                    .mapToInt(CoreAccountHoldingsResponse.HoldingDto::getQty)
+                    .sum();
+            if (heldQty < request.getQty()) {
+                throw new GeneralException(ErrorStatus.INSUFFICIENT_HOLDING);
+            }
+        }
 
         // LS API 주문 제출
         LsOrderResponse lsResponse = lsOrderClient.submitOrder(
