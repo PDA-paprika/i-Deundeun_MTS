@@ -24,3 +24,4 @@ ls:
     app-secret: ${LS_APP_SECRET}
     base-url: https://openapi.ls-sec.co.kr:8080
     ws-url: wss://openapi.ls-sec.co.kr:9443/websocket
+    account-number: "실제LS계좌번호"

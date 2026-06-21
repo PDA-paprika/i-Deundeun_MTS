@@ -64,4 +64,13 @@ public class TradeOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public void fill(int filledQty) {
+        this.remainingQty -= filledQty;
+        if (this.remainingQty <= 0) {
+            this.status = OrderStatus.EXECUTED;
+            this.remainingQty = 0;
+        } else {
+            this.status = OrderStatus.PARTIALLY_EXECUTED;
+        }
+    }
 }

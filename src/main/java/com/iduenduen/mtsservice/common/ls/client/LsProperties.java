@@ -17,4 +17,5 @@ public class LsProperties {
     private String baseUrl;
     private String wsUrl;
     private String macAddress;
+    private String accountNumber;  // SC1 체결 통보 구독용 계좌번호
 }

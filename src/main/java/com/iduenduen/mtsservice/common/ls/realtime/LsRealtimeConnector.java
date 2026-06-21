@@ -12,6 +12,8 @@ import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
 import com.iduenduen.mtsservice.domain.etf.service.EtfOrderBookService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfPriceService;
 
+import com.iduenduen.mtsservice.domain.ls.order.dto.LsOrderExecutionEvent;
+import com.iduenduen.mtsservice.domain.order.service.OrderService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,7 @@ public class LsRealtimeConnector {
 
     private static final String TR_CD_PRICE = "I5_";
     private static final String TR_CD_ORDERBOOK = "B7_";
+    private static final String TR_CD_EXECUTION = "SC1";
     private static final String TR_TYPE_SUBSCRIBE = "3";
     private static final long SUBSCRIBE_DELAY_MS = 50;
     private static final long RECONNECT_DELAY_SECONDS = 10;
@@ -49,6 +52,7 @@ public class LsRealtimeConnector {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final OrderService orderService;
 
     @Value("${app.etf.realtime.persist-enabled:false}")
     private boolean persistEnabled;
@@ -107,6 +111,10 @@ public class LsRealtimeConnector {
                 subscriptionCount++;
                 Thread.sleep(SUBSCRIBE_DELAY_MS);
             }
+
+            // SC1 체결 통보 구독
+            session.sendMessage(new TextMessage(subscribeMessage(TR_CD_EXECUTION, lsProperties.getAccountNumber())));
+            subscriptionCount++;
             log.info("Sent LS realtime subscriptions. codes={}, subscriptions={}", SolEtfCodes.CODES.size(), subscriptionCount);
         }
 
@@ -133,6 +141,8 @@ public class LsRealtimeConnector {
             handlePrice(body);
         } else if (TR_CD_ORDERBOOK.equals(trCd)) {
             handleOrderBook(body);
+        } else if (TR_CD_EXECUTION.equals(trCd)) {
+            handleExecution(body);
         } else {
             log.debug("Ignored LS realtime message. trCd={}, payload={}", trCd, payload);
         }
@@ -180,6 +190,15 @@ public class LsRealtimeConnector {
             etfOrderBookService.applyRealtimeOrderBook(shcode, askPrices, askQtys, bidPrices, bidQtys);
         } catch (Exception e) {
             log.warn("Failed to persist realtime orderbook. shcode={}", shcode, e);
+        }
+    }
+
+    private void handleExecution(JsonNode body) {
+        try {
+            LsOrderExecutionEvent event = objectMapper.convertValue(body, LsOrderExecutionEvent.class);
+            orderService.processExecution(event);
+        } catch (Exception e) {
+            log.warn("Failed to handle SC1 execution event. body={}", body, e);
         }
     }
 }
