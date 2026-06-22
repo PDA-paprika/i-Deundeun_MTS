@@ -15,4 +15,6 @@ public interface EtfCandle1mRepository extends JpaRepository<EtfCandle1m, Long> 
 
     List<EtfCandle1m> findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(
             Long etfId, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    boolean existsByEtfId(Long etfId);
 }

@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +32,7 @@ public class EtfOrderBookService {
     private final LsOrderBookService lsOrderBookService;
     private final EtfRepository etfRepository;
     private final OrderBookSnapshotRepository orderBookSnapshotRepository;
+    private final EtfRealtimeCacheService etfRealtimeCacheService;
 
     @Transactional
     public void fetchAndSaveSnapshot(String code) {
@@ -81,6 +83,11 @@ public class EtfOrderBookService {
 
     @Transactional(readOnly = true)
     public EtfOrderBookResponse getOrderBook(String code) {
+        Optional<EtfRealtimeCacheService.OrderBookSnapshotCache> cached = etfRealtimeCacheService.getCachedOrderBook(code);
+        if (cached.isPresent()) {
+            return fromCache(code, cached.get());
+        }
+
         Etf etf = etfRepository.findByCode(code)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));
 
@@ -102,5 +109,16 @@ public class EtfOrderBookService {
                 .toList();
 
         return EtfOrderBookResponse.of(code, snapshotAt, asks, bids);
+    }
+
+    private EtfOrderBookResponse fromCache(String code, EtfRealtimeCacheService.OrderBookSnapshotCache cache) {
+        List<OrderBookLevel> asks = new ArrayList<>();
+        List<OrderBookLevel> bids = new ArrayList<>();
+        for (int i = 0; i < LEVELS; i++) {
+            int step = i + 1;
+            asks.add(OrderBookLevel.of(step, cache.askPrices()[i], cache.askQtys()[i]));
+            bids.add(OrderBookLevel.of(step, cache.bidPrices()[i], cache.bidQtys()[i]));
+        }
+        return EtfOrderBookResponse.of(code, cache.updatedAt(), asks, bids);
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class EtfQueryService {
 
     private final EtfRepository etfRepository;
     private final EtfCandle1dRepository etfCandle1dRepository;
+    private final EtfRealtimeCacheService etfRealtimeCacheService;
 
     public EtfDetailResponse getEtfDetail(String code) {
         Etf etf = etfRepository.findByCode(code)
@@ -35,11 +37,11 @@ public class EtfQueryService {
         }
 
         EtfCandle1d today = latestTwo.get(0);
-        DayOverDayChange change = computeChange(today, latestTwo);
+        LiveQuote quote = resolveQuote(code, today, latestTwo);
 
         return EtfDetailResponse.of(
-                etf, today.getClosePrice(), change.priceChange(), change.changeRate(),
-                today.getHighPrice(), today.getLowPrice(), today.getVolume(), today.getTradeAmount()
+                etf, quote.currentPrice(), quote.priceChange(), quote.changeRate(),
+                today.getHighPrice(), today.getLowPrice(), quote.volume(), today.getTradeAmount()
         );
     }
 
@@ -88,21 +90,26 @@ public class EtfQueryService {
         }
 
         EtfCandle1d today = latestTwo.get(0);
-        DayOverDayChange change = computeChange(today, latestTwo);
-        long marketCap = today.getClosePrice() * etf.getListing();
+        LiveQuote quote = resolveQuote(etf.getCode(), today, latestTwo);
+        long marketCap = quote.currentPrice() * etf.getListing();
 
         EtfListItem listItem = EtfListItem.of(
-                etf, today.getClosePrice(), change.priceChange(), change.changeRate(), today.getVolume(), today.getTradeAmount()
+                etf, quote.currentPrice(), quote.priceChange(), quote.changeRate(), quote.volume(), today.getTradeAmount()
         );
 
-        return new RankedItem(listItem, today.getVolume(), today.getTradeAmount(), change.changeRate(), marketCap, etf.getName());
+        return new RankedItem(listItem, quote.volume(), today.getTradeAmount(), quote.changeRate(), marketCap, etf.getName());
     }
 
-    private DayOverDayChange computeChange(EtfCandle1d today, List<EtfCandle1d> latestTwo) {
+    private LiveQuote resolveQuote(String code, EtfCandle1d today, List<EtfCandle1d> latestTwo) {
         long previousClose = latestTwo.size() > 1 ? latestTwo.get(1).getClosePrice() : today.getClosePrice();
-        long priceChange = today.getClosePrice() - previousClose;
+
+        Optional<EtfRealtimeCacheService.PriceSnapshot> cached = etfRealtimeCacheService.getCachedPrice(code);
+        long currentPrice = cached.map(EtfRealtimeCacheService.PriceSnapshot::price).orElse(today.getClosePrice());
+        long volume = cached.map(EtfRealtimeCacheService.PriceSnapshot::volume).orElse(today.getVolume());
+
+        long priceChange = currentPrice - previousClose;
         double changeRate = previousClose == 0 ? 0.0 : (priceChange * 100.0) / previousClose;
-        return new DayOverDayChange(priceChange, changeRate);
+        return new LiveQuote(currentPrice, priceChange, changeRate, volume);
     }
 
     private Comparator<RankedItem> comparatorFor(String sort) {
@@ -121,6 +128,6 @@ public class EtfQueryService {
                                long marketCap, String name) {
     }
 
-    private record DayOverDayChange(long priceChange, double changeRate) {
+    private record LiveQuote(long currentPrice, long priceChange, double changeRate, long volume) {
     }
 }
