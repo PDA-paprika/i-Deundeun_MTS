@@ -1,6 +1,7 @@
 package com.iduenduen.mtsservice.common.core;
 
 import com.iduenduen.mtsservice.common.core.dto.CoreAccountHoldingsResponse;
+import com.iduenduen.mtsservice.common.core.dto.CoreTradeRequest;
 import com.iduenduen.mtsservice.common.response.ApiResponse;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,15 @@ public class CoreAccountClient {
                 url, HttpMethod.GET, entity,
                 new ParameterizedTypeReference<ApiResponse<CoreAccountHoldingsResponse>>() {});
         return response.getBody().getData();
+    }
+
+    public void postTrade(CoreTradeRequest req) {
+        String url = coreBaseUrl + "/account/trade";
+
+        HttpEntity<CoreTradeRequest> entity = new HttpEntity<>(req, new HttpHeaders());
+        restTemplate.exchange(
+                url, HttpMethod.POST, entity,
+                new ParameterizedTypeReference<ApiResponse<Long>>() {});
     }
 
     private HttpHeaders authHeaders(String authHeader) {

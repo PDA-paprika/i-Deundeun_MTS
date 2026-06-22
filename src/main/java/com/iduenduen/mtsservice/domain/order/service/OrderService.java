@@ -2,6 +2,7 @@ package com.iduenduen.mtsservice.domain.order.service;
 
 import com.iduenduen.mtsservice.common.core.CoreAccountClient;
 import com.iduenduen.mtsservice.common.core.dto.CoreAccountHoldingsResponse;
+import com.iduenduen.mtsservice.common.core.dto.CoreTradeRequest;
 import com.iduenduen.mtsservice.common.exception.GeneralException;
 import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
@@ -18,6 +19,8 @@ import com.iduenduen.mtsservice.domain.order.repository.TradeOrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -83,9 +86,25 @@ public class OrderService {
 
         String lsOrdno = event.getOrdno().trim();
         int filledQty = Integer.parseInt(event.getExecqty().trim());
+        long execPrice = Long.parseLong(event.getExecprc().trim());
+        String etfCode = event.getShtnIsuno().trim();
 
         tradeOrderRepository.findByLsOrdno(lsOrdno).ifPresent(order -> {
             order.fill(filledQty);
+
+            CoreTradeRequest coreReq = CoreTradeRequest.builder()
+                    .accountId(order.getAccountId())
+                    .parentId(order.getParentId())
+                    .eventType(order.getSide().name())
+                    .externalEtfId(etfCode)
+                    .qty(filledQty)
+                    .price(execPrice)
+                    .referenceId(order.getId().toString())
+                    .referenceType("EXECUTION")
+                    .occurredAt(LocalDateTime.now())
+                    .build();
+
+            coreAccountClient.postTrade(coreReq);
         });
     }
 }
