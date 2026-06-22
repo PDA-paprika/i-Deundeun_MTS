@@ -9,8 +9,7 @@ import com.iduenduen.mtsservice.common.ls.client.LsProperties;
 import com.iduenduen.mtsservice.domain.etf.realtime.EtfOrderBookWebSocketHandler;
 import com.iduenduen.mtsservice.domain.etf.realtime.EtfPriceWebSocketHandler;
 import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
-import com.iduenduen.mtsservice.domain.etf.service.EtfOrderBookService;
-import com.iduenduen.mtsservice.domain.etf.service.EtfPriceService;
+import com.iduenduen.mtsservice.domain.etf.service.EtfCandleAccumulatorService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfRealtimeCacheService;
 
 import jakarta.annotation.PostConstruct;
@@ -43,8 +42,7 @@ public class LsRealtimeConnector {
 
     private final LsProperties lsProperties;
     private final LsTokenManager lsTokenManager;
-    private final EtfPriceService etfPriceService;
-    private final EtfOrderBookService etfOrderBookService;
+    private final EtfCandleAccumulatorService etfCandleAccumulatorService;
     private final EtfPriceWebSocketHandler etfPriceWebSocketHandler;
     private final EtfOrderBookWebSocketHandler etfOrderBookWebSocketHandler;
     private final EtfRealtimeCacheService etfRealtimeCacheService;
@@ -154,9 +152,9 @@ public class LsRealtimeConnector {
         }
 
         try {
-            etfPriceService.applyRealtimeTick(shcode, price, volume);
+            etfCandleAccumulatorService.accumulate(shcode, price, volume);
         } catch (Exception e) {
-            log.warn("Failed to persist realtime price tick. shcode={}, price={}, volume={}", shcode, price, volume, e);
+            log.warn("Failed to accumulate realtime price tick. shcode={}, price={}, volume={}", shcode, price, volume, e);
         }
     }
 
@@ -177,15 +175,5 @@ public class LsRealtimeConnector {
 
         etfOrderBookWebSocketHandler.broadcastOrderBookUpdate(shcode, askPrices, askQtys, bidPrices, bidQtys);
         etfRealtimeCacheService.cacheOrderBook(shcode, askPrices, askQtys, bidPrices, bidQtys);
-
-        if (!persistEnabled) {
-            return;
-        }
-
-        try {
-            etfOrderBookService.applyRealtimeOrderBook(shcode, askPrices, askQtys, bidPrices, bidQtys);
-        } catch (Exception e) {
-            log.warn("Failed to persist realtime orderbook. shcode={}", shcode, e);
-        }
     }
 }
