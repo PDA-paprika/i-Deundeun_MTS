@@ -3,10 +3,13 @@ package com.iduenduen.mtsservice.common.core;
 import com.iduenduen.mtsservice.common.core.dto.CoreAccountHoldingsResponse;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.beans.factory.annotation.Value;
 
 @Component
 @RequiredArgsConstructor
@@ -17,23 +20,29 @@ public class CoreAccountClient {
     @Value("${core.api.base-url}")
     private String coreBaseUrl;
 
-    public AccountBalanceResponse getBalance(Long accountId) {
+    public AccountBalanceResponse getBalance(Long accountId, String authHeader) {
         String url = UriComponentsBuilder
                 .fromUriString(coreBaseUrl + "/account/balance")
                 .queryParam("accountId", accountId)
                 .toUriString();
 
-        return restTemplate.getForObject(url, AccountBalanceResponse.class);
+        HttpEntity<Void> entity = new HttpEntity<>(authHeaders(authHeader));
+        return restTemplate.exchange(url, HttpMethod.GET, entity, AccountBalanceResponse.class).getBody();
     }
 
-    public CoreAccountHoldingsResponse getHoldings(Long accountId) {
+    public CoreAccountHoldingsResponse getHoldings(Long accountId, String authHeader) {
         String url = UriComponentsBuilder
                 .fromUriString(coreBaseUrl + "/account/holdings")
                 .queryParam("accountId", accountId)
                 .toUriString();
 
-        return restTemplate.getForObject(url, CoreAccountHoldingsResponse.class);
+        HttpEntity<Void> entity = new HttpEntity<>(authHeaders(authHeader));
+        return restTemplate.exchange(url, HttpMethod.GET, entity, CoreAccountHoldingsResponse.class).getBody();
     }
 
-
+    private HttpHeaders authHeaders(String authHeader) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.AUTHORIZATION, authHeader);
+        return headers;
+    }
 }

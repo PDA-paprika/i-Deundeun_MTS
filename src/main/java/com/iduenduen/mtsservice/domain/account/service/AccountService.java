@@ -18,12 +18,12 @@ public class AccountService {
     private final CoreAccountClient coreAccountClient;
     private final EtfRepository etfRepository;
 
-    public AccountBalanceResponse getBalance(Long accountId) {
-        return coreAccountClient.getBalance(accountId);
+    public AccountBalanceResponse getBalance(Long accountId, String authHeader) {
+        return coreAccountClient.getBalance(accountId, authHeader);
     }
 
-    public AccountSummaryResponse getSummary(Long accountId) {
-        CoreAccountHoldingsResponse coreResponse = coreAccountClient.getHoldings(accountId);
+    public AccountSummaryResponse getSummary(Long accountId, String authHeader) {
+        CoreAccountHoldingsResponse coreResponse = coreAccountClient.getHoldings(accountId, authHeader);
 
         List<AccountSummaryResponse.HoldingDto> holdingDtos = coreResponse.getHoldings().stream()
                 .map(h -> {
