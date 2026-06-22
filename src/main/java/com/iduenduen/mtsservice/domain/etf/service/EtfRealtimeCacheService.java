@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -19,7 +18,6 @@ public class EtfRealtimeCacheService {
 
     private static final String PRICE_KEY_PREFIX = "etf:price:latest:";
     private static final String ORDERBOOK_KEY_PREFIX = "etf:orderbook:latest:";
-    private static final Duration TTL = Duration.ofMinutes(10);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -44,7 +42,7 @@ public class EtfRealtimeCacheService {
 
     private void write(String key, Object value, String kind, String code) {
         try {
-            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(value), TTL);
+            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(value));
         } catch (Exception e) {
             log.warn("Failed to cache realtime {}. code={}", kind, code, e);
         }
