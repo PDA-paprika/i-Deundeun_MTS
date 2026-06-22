@@ -66,6 +66,7 @@ public class OrderService {
                 .qty(request.getQty())
                 .remainingQty(request.getQty())
                 .status(OrderStatus.PENDING)
+                .lsOrdno(lsResponse.getOrdNo())
                 .build();
         tradeOrderRepository.save(order);
 
@@ -80,10 +81,10 @@ public class OrderService {
     public void processExecution(LsOrderExecutionEvent event) {
         if (!"11".equals(event.getOrdxctptncode())) return;
 
-        Long orderId = Long.parseLong(event.getOrdno().trim());
+        String lsOrdno = event.getOrdno().trim();
         int filledQty = Integer.parseInt(event.getExecqty().trim());
 
-        tradeOrderRepository.findById(orderId).ifPresent(order -> {
+        tradeOrderRepository.findByLsOrdno(lsOrdno).ifPresent(order -> {
             order.fill(filledQty);
         });
     }

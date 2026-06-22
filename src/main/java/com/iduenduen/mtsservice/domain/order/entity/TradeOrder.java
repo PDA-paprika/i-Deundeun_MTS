@@ -56,6 +56,9 @@ public class TradeOrder {
     @Column(name = "status", length = 20, nullable = false)
     private OrderStatus status = OrderStatus.PENDING;
 
+    @Column(name = "ls_ordno", length = 20)
+    private String lsOrdno;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
