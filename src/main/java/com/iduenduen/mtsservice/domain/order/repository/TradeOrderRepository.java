@@ -6,8 +6,10 @@ import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
     List<TradeOrder> findByAccountIdAndStatus(Long accountId, OrderStatus status);
     List<TradeOrder> findByAccountIdAndSideAndStatus(Long accountId, OrderSide side, OrderStatus status);
+    Optional<TradeOrder> findByLsOrdno(String lsOrdno);
 }
