@@ -11,6 +11,7 @@ import com.iduenduen.mtsservice.domain.etf.realtime.EtfPriceWebSocketHandler;
 import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
 import com.iduenduen.mtsservice.domain.etf.service.EtfOrderBookService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfPriceService;
+import com.iduenduen.mtsservice.domain.etf.service.EtfRealtimeCacheService;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class LsRealtimeConnector {
     private final EtfOrderBookService etfOrderBookService;
     private final EtfPriceWebSocketHandler etfPriceWebSocketHandler;
     private final EtfOrderBookWebSocketHandler etfOrderBookWebSocketHandler;
+    private final EtfRealtimeCacheService etfRealtimeCacheService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -145,6 +147,8 @@ public class LsRealtimeConnector {
         long change = body.path("change").asLong();
 
         etfPriceWebSocketHandler.broadcastPriceUpdate(shcode, price, change, 0.0, volume);
+        etfRealtimeCacheService.cachePrice(shcode, price, change, 0.0, volume);
+
         if (!persistEnabled) {
             return;
         }
@@ -172,6 +176,8 @@ public class LsRealtimeConnector {
         }
 
         etfOrderBookWebSocketHandler.broadcastOrderBookUpdate(shcode, askPrices, askQtys, bidPrices, bidQtys);
+        etfRealtimeCacheService.cacheOrderBook(shcode, askPrices, askQtys, bidPrices, bidQtys);
+
         if (!persistEnabled) {
             return;
         }
