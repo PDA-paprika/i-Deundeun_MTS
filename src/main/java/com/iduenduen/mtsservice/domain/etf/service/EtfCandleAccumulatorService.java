@@ -16,6 +16,7 @@ import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1wRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle30mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle60mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfRepository;
+import com.iduenduen.mtsservice.domain.etf.realtime.EtfCandleWebSocketHandler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
@@ -56,6 +58,7 @@ public class EtfCandleAccumulatorService {
 
     private final StringRedisTemplate redisTemplate;
     private final EtfRepository etfRepository;
+    private final EtfCandleWebSocketHandler etfCandleWebSocketHandler;
     private final EtfCandle1mRepository etfCandle1mRepository;
     private final EtfCandle10mRepository etfCandle10mRepository;
     private final EtfCandle30mRepository etfCandle30mRepository;
@@ -79,12 +82,38 @@ public class EtfCandleAccumulatorService {
         String volumeStr = String.valueOf(delta);
 
         accumulateKey(KEY_1M + code, priceStr, volumeStr, nowBucket);
+        broadcastLiveCandle(code, "1m", KEY_1M, now.withSecond(0).withNano(0));
+
         accumulateKey(KEY_10M + code, priceStr, volumeStr, nowBucket);
+        broadcastLiveCandle(code, "10m", KEY_10M, flooredNow(10));
+
         accumulateKey(KEY_30M + code, priceStr, volumeStr, nowBucket);
+        broadcastLiveCandle(code, "30m", KEY_30M, flooredNow(30));
+
         accumulateKey(KEY_60M + code, priceStr, volumeStr, nowBucket);
+        broadcastLiveCandle(code, "60m", KEY_60M, flooredNow(60));
+
         accumulateKey(KEY_1D + code, priceStr, volumeStr, nowBucket);
+        broadcastLiveCandle(code, "1d", KEY_1D, LocalDate.now().atStartOfDay());
+
         accumulateKey(KEY_1W + code, priceStr, volumeStr, weekBucket);
         accumulateKey(KEY_1MO + code, priceStr, volumeStr, monthBucket);
+    }
+
+    private void broadcastLiveCandle(String code, String interval, String keyPrefix, LocalDateTime candleTime) {
+        try {
+            Map<Object, Object> data = getCurrentCandle(code, keyPrefix);
+            if (data.isEmpty() || !isValid(data)) {
+                return;
+            }
+            etfCandleWebSocketHandler.broadcastCandleUpdate(
+                    code, interval, candleTime.toEpochSecond(ZoneOffset.UTC),
+                    parse(data.get("open")), parse(data.get("high")), parse(data.get("low")),
+                    parse(data.get("close")), parse(data.get("volume"))
+            );
+        } catch (Exception e) {
+            log.warn("Failed to broadcast live candle. code={}, interval={}", code, interval, e);
+        }
     }
 
     private long computeVolumeDelta(String code, long cumulativeVolume) {
