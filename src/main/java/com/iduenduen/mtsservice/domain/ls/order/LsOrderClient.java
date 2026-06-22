@@ -16,16 +16,20 @@ public class LsOrderClient {
 
     public LsOrderResponse submitOrder(String accountNumber, String etfCode,
                                        OrderSide side, OrderType orderType, Long price, int qty) {
-        LsOrderRequest request = LsOrderRequest.builder()
+        LsOrderRequest.Block block = LsOrderRequest.Block.builder()
                 .accNo(accountNumber)
-                .IsuNo(etfCode)
-                .OrdQty(qty)
-                .OrdPrc(orderType == OrderType.MARKET ? 0L : price)
-                .BnsTpCode(side == OrderSide.BUY ? "02" : "01")
-                .OrdprcPtnCode(orderType == OrderType.MARKET ? "03" : "00")
-                .MgntrnCode("000")
-                .LoanDt("")
-                .OrdCndiTpCode("0")
+                .isuNo(etfCode)
+                .ordQty(qty)
+                .ordPrc(orderType == OrderType.MARKET ? 0L : price)
+                .bnsTpCode(side == OrderSide.BUY ? "2" : "1")
+                .ordprcPtnCode(orderType == OrderType.MARKET ? "03" : "00")
+                .mgntrnCode("000")
+                .loanDt("")
+                .ordCndiTpCode("0")
+                .build();
+
+        LsOrderRequest request = LsOrderRequest.builder()
+                .block(block)
                 .build();
 
         return lsRestClient.post(
