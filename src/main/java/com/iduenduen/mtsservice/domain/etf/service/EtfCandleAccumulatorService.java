@@ -119,8 +119,6 @@ public class EtfCandleAccumulatorService {
     public String key30m() { return KEY_30M; }
     public String key60m() { return KEY_60M; }
     public String key1d() { return KEY_1D; }
-    public String key1w() { return KEY_1W; }
-    public String key1mo() { return KEY_1MO; }
 
     @Transactional
     public void flush1m(String code) {
