@@ -97,7 +97,6 @@ public class EtfController {
             description = "LS API에서 최신 호가 스냅샷을 조회한 뒤 응답합니다."
     )
     public ResponseEntity<ApiResponse<EtfOrderBookResponse>> getEtfOrderBook(@PathVariable String etfCode) {
-        etfOrderBookService.fetchAndSaveSnapshot(etfCode);
         EtfOrderBookResponse response = etfOrderBookService.getOrderBook(etfCode);
         return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
     }
