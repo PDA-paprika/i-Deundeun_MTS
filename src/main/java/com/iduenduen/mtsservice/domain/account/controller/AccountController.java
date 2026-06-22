@@ -22,14 +22,16 @@ public class AccountController {
     @GetMapping("/balance")
     @Operation(summary = "예수금 조회", description = "주문 가능 예수금을 조회합니다.")
     public ResponseEntity<ApiResponse<AccountBalanceResponse>> getBalance(
-            @RequestParam Long accountId) {
-        return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getBalance(accountId));
+            @RequestParam Long accountId,
+            @RequestHeader("Authorization") String authHeader) {
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getBalance(accountId, authHeader));
     }
 
     @GetMapping("/summary")
     @Operation(summary = "계좌 요약 조회", description = "예수금 및 보유 종목 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<AccountSummaryResponse>> getSummary(
-            @RequestParam Long accountId) {
-        return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getSummary(accountId));
+            @RequestParam Long accountId,
+            @RequestHeader("Authorization") String authHeader) {
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, accountService.getSummary(accountId, authHeader));
     }
 }

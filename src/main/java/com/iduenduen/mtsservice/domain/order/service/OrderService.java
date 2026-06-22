@@ -28,17 +28,16 @@ public class OrderService {
     private final CoreAccountClient coreAccountClient;
 
     @Transactional
-    public OrderResponse submitOrder(OrderRequest request) {
+    public OrderResponse submitOrder(OrderRequest request, String authHeader) {
 
         if (request.getSide() == OrderSide.BUY) {
-            AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId());
-            // TODO: 시장가 검증 - Redis etf:price:{etfId} 저장 로직 추가 후 구현 필요
+            AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId(), authHeader);
             long orderAmount = request.getOrderType() == OrderType.MARKET ? 0L : request.getPrice() * request.getQty();
             if (balance.getAvailableAmt() < orderAmount) {
                 throw new GeneralException(ErrorStatus.INSUFFICIENT_BALANCE);
             }
         } else {
-            CoreAccountHoldingsResponse holdings = coreAccountClient.getHoldings(request.getAccountId());
+            CoreAccountHoldingsResponse holdings = coreAccountClient.getHoldings(request.getAccountId(), authHeader);
             int heldQty = holdings.getHoldings().stream()
                     .filter(h -> h.getEtfId().equals(request.getEtfId()))
                     .mapToInt(CoreAccountHoldingsResponse.HoldingDto::getQty)
@@ -60,7 +59,8 @@ public class OrderService {
         TradeOrder order = TradeOrder.builder()
                 .accountId(request.getAccountId())
                 .parentId(request.getParentId())
-                .etfId(request.getEtfId())                .side(request.getSide())
+                .etfId(request.getEtfId())
+                .side(request.getSide())
                 .orderType(request.getOrderType())
                 .price(request.getPrice())
                 .qty(request.getQty())

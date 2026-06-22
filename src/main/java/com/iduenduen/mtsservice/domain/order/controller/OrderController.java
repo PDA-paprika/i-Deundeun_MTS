@@ -22,7 +22,8 @@ public class OrderController {
     @PostMapping
     @Operation(summary = "주문 제출", description = "매수/매도 주문을 제출합니다.")
     public ResponseEntity<ApiResponse<OrderResponse>> submitOrder(
-            @RequestBody OrderRequest request) {
-        return ApiResponse.success(SuccessStatus.SUCCESS_200, orderService.submitOrder(request));
+            @RequestBody OrderRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, orderService.submitOrder(request, authHeader));
     }
 }
