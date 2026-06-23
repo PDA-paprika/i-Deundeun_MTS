@@ -15,6 +15,7 @@ import com.iduenduen.mtsservice.domain.order.entity.TradeOrder;
 import com.iduenduen.mtsservice.domain.order.enums.OrderSide;
 import com.iduenduen.mtsservice.domain.order.enums.OrderStatus;
 import com.iduenduen.mtsservice.domain.order.enums.OrderType;
+import com.iduenduen.mtsservice.domain.order.realtime.OrderExecutionWebSocketHandler;
 import com.iduenduen.mtsservice.domain.order.repository.TradeOrderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class OrderService {
     private final TradeOrderRepository tradeOrderRepository;
     private final LsOrderClient lsOrderClient;
     private final CoreAccountClient coreAccountClient;
+    private final OrderExecutionWebSocketHandler orderExecutionWebSocketHandler;
 
     @Transactional
     public OrderResponse submitOrder(OrderRequest request, String authHeader) {
@@ -105,6 +107,15 @@ public class OrderService {
                     .build();
 
             coreAccountClient.postTrade(coreReq);
+
+            orderExecutionWebSocketHandler.pushExecution(
+                    order.getAccountId(),
+                    order.getId(),
+                    etfCode,
+                    order.getSide().name(),
+                    filledQty,
+                    execPrice
+            );
         });
     }
 }
