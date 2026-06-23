@@ -47,36 +47,46 @@ public class EtfBackfillAdminService {
         }
     }
 
-    // 특정 종목 일/주/월봉 + 분봉(최근 30일) 전부 강제 백필 (스킵 체크 없음, upsert라 안전)
+    // 특정 종목 일/주/월봉(상장일 전체) + 분봉(최근 MINUTE_HISTORY_DAYS일) 강제 백필 (스킵 체크 없음, upsert라 안전)
     public void backfillOne(String code) {
         Etf etf = etfRepository.findByCode(code).orElse(null);
         if (etf == null) {
             log.warn("[*] 백필 대상 종목 없음. code={}", code);
             return;
         }
+        Long etfId = etf.getId();
 
         // 오늘 분봉은 실시간 적재가 채우는 중이라 동시 쓰기 충돌이 나므로, 어제까지만 백필한다.
         String until = LocalDate.now().minusDays(1).format(DATE_FORMAT);
         String from = LocalDate.now().minusDays(MINUTE_HISTORY_DAYS).format(DATE_FORMAT);
 
-        try {
-            etfCandleBackfillService.backfillDaily(etf.getId(), code);
-            sleep();
-            etfCandleBackfillService.backfillWeekly(etf.getId(), code);
-            sleep();
-            etfCandleBackfillService.backfillMonthly(etf.getId(), code);
-            sleep();
-            etfCandleBackfillService.backfillMinute1m(etf.getId(), code, from, until);
-            sleep();
-            etfCandleBackfillService.backfillMinute10m(etf.getId(), code, from, until);
-            sleep();
-            etfCandleBackfillService.backfillMinute30m(etf.getId(), code, from, until);
-            sleep();
-            etfCandleBackfillService.backfillMinute60m(etf.getId(), code, from, until);
-            sleep();
+        // 단계별로 독립 실행한다. 한 단계(예: 특정 분봉)가 실패해도 나머지 단계는 계속 진행되도록 분리.
+        int failed = 0;
+        failed += runStep(code, "일봉", () -> etfCandleBackfillService.backfillDaily(etfId, code));
+        failed += runStep(code, "주봉", () -> etfCandleBackfillService.backfillWeekly(etfId, code));
+        failed += runStep(code, "월봉", () -> etfCandleBackfillService.backfillMonthly(etfId, code));
+        failed += runStep(code, "1분봉", () -> etfCandleBackfillService.backfillMinute1m(etfId, code, from, until));
+        failed += runStep(code, "10분봉", () -> etfCandleBackfillService.backfillMinute10m(etfId, code, from, until));
+        failed += runStep(code, "30분봉", () -> etfCandleBackfillService.backfillMinute30m(etfId, code, from, until));
+        failed += runStep(code, "60분봉", () -> etfCandleBackfillService.backfillMinute60m(etfId, code, from, until));
+
+        if (failed == 0) {
             log.info("[*] ETF 백필 완료. code={}", code);
+        } else {
+            log.warn("[*] ETF 백필 완료(일부 실패). code={}, 실패단계수={}", code, failed);
+        }
+    }
+
+    // 단계 하나를 실행하고, 실패 시 로그만 남긴 뒤 1을 반환(다음 단계 진행). 성공 시 0.
+    private int runStep(String code, String label, Runnable step) {
+        try {
+            step.run();
+            return 0;
         } catch (Exception e) {
-            log.error("[*] ETF 백필 실패. code={}", code, e);
+            log.error("[*] ETF 백필 단계 실패. code={}, 단계={} - {}", code, label, e.getMessage());
+            return 1;
+        } finally {
+            sleep();
         }
     }
 

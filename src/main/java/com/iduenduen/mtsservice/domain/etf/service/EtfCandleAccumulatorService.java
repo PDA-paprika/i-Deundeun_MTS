@@ -106,11 +106,13 @@ public class EtfCandleAccumulatorService {
         accumulateKey(KEY_1D + code, priceStr, volumeStr, nowBucket);
         broadcastLiveCandle(code, "1d", KEY_1D, LocalDate.now().atStartOfDay());
 
+        // t8451은 진행 중인 주/달의 캔들을 "오늘" 날짜로 내려준다 (마감된 주/달은 마지막 거래일로 저장됨).
+        // flushWeekly/Monthly도 같은 convention(now() at flush time)이라, 라이브 브로드캐스트도 동일하게 맞춘다.
         accumulateKey(KEY_1W + code, priceStr, volumeStr, weekBucket);
-        broadcastLiveCandle(code, "1w", KEY_1W, now.toLocalDate().with(DayOfWeek.MONDAY).atStartOfDay());
+        broadcastLiveCandle(code, "1w", KEY_1W, LocalDate.now().atStartOfDay());
 
         accumulateKey(KEY_1MO + code, priceStr, volumeStr, monthBucket);
-        broadcastLiveCandle(code, "1mo", KEY_1MO, now.toLocalDate().withDayOfMonth(1).atStartOfDay());
+        broadcastLiveCandle(code, "1mo", KEY_1MO, LocalDate.now().atStartOfDay());
     }
 
     private void broadcastLiveCandle(String code, String interval, String keyPrefix, LocalDateTime candleTime) {
