@@ -17,4 +17,6 @@ public class OrderRequest {
     private Long price;
     private int qty;
     private Long etfId;
+    private Long childId;
+    private Long goalId;
 }
