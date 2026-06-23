@@ -1,8 +1,8 @@
 package com.iduenduen.mtsservice.domain.etf.service;
 
-import com.iduenduen.mtsservice.common.ls.stock.dto.LsPeriodPriceResponse;
+import com.iduenduen.mtsservice.common.ls.stock.dto.LsUnifiedDailyCandleResponse;
 import com.iduenduen.mtsservice.common.ls.stock.dto.LsUnifiedMinuteCandleResponse;
-import com.iduenduen.mtsservice.common.ls.stock.service.LsPeriodPriceService;
+import com.iduenduen.mtsservice.common.ls.stock.service.LsUnifiedDailyCandleService;
 import com.iduenduen.mtsservice.common.ls.stock.service.LsUnifiedMinuteCandleService;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle10m;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1d;
@@ -38,12 +38,10 @@ public class EtfCandleBackfillService {
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final String EXCHANGE_KRX = "K";
 
-    private static final int DAY_COUNT = 100;
-    private static final int WEEK_COUNT = 52;
-    private static final int MONTH_COUNT = 24;
-    private static final int MAX_PAGE = 50;
+    private static final String LISTING_FLOOR_DATE = "19560101";
+    private static final int MAX_PAGE = 100;
 
-    private final LsPeriodPriceService lsPeriodPriceService;
+    private final LsUnifiedDailyCandleService lsUnifiedDailyCandleService;
     private final LsUnifiedMinuteCandleService lsUnifiedMinuteCandleService;
     private final EtfCandle1dRepository etfCandle1dRepository;
     private final EtfCandle1wRepository etfCandle1wRepository;
@@ -55,20 +53,12 @@ public class EtfCandleBackfillService {
 
     @Transactional
     public void backfillDaily(Long etfId, String shcode) {
-        List<LsPeriodPriceResponse.T1305OutBlock1> rows =
-                lsPeriodPriceService.getPeriodPrices(shcode, LsPeriodPriceService.DWM_DAY, DAY_COUNT);
-        for (LsPeriodPriceResponse.T1305OutBlock1 row : rows) {
-            upsertDaily(etfId, row);
-        }
+        backfillDailyRange(etfId, shcode, LsUnifiedDailyCandleService.GUBUN_DAY, this::upsertDaily);
     }
 
     @Transactional
     public void backfillWeekly(Long etfId, String shcode) {
-        List<LsPeriodPriceResponse.T1305OutBlock1> rows =
-                lsPeriodPriceService.getPeriodPrices(shcode, LsPeriodPriceService.DWM_WEEK, WEEK_COUNT);
-        for (LsPeriodPriceResponse.T1305OutBlock1 row : rows) {
-            upsertWeekly(etfId, row);
-        }
+        backfillDailyRange(etfId, shcode, LsUnifiedDailyCandleService.GUBUN_WEEK, this::upsertWeekly);
     }
 
     @Transactional
@@ -194,61 +184,84 @@ public class EtfCandleBackfillService {
 
     @Transactional
     public void backfillMonthly(Long etfId, String shcode) {
-        List<LsPeriodPriceResponse.T1305OutBlock1> rows =
-                lsPeriodPriceService.getPeriodPrices(shcode, LsPeriodPriceService.DWM_MONTH, MONTH_COUNT);
-        for (LsPeriodPriceResponse.T1305OutBlock1 row : rows) {
-            upsertMonthly(etfId, row);
+        backfillDailyRange(etfId, shcode, LsUnifiedDailyCandleService.GUBUN_MONTH, this::upsertMonthly);
+    }
+
+    // 상장일(혹은 그보다 더 이전)부터 오늘까지 전체 구간을 요청해, 거래소 데이터가 존재하는 만큼만 받아온다.
+    private void backfillDailyRange(Long etfId, String shcode, String gubun,
+                                     BiConsumer<Long, LsUnifiedDailyCandleResponse.T8451OutBlock1> upsert) {
+        String today = LocalDate.now().format(DATE_FORMAT);
+
+        LsUnifiedDailyCandleResponse response =
+                lsUnifiedDailyCandleService.getUnifiedDailyCandles(shcode, gubun, LISTING_FLOOR_DATE, today, EXCHANGE_KRX);
+        applyDailyRows(etfId, response, upsert);
+
+        int page = 0;
+        while (response.hasNext() && page < MAX_PAGE) {
+            String ctsDate = response.getT8451OutBlock().getCts_date();
+            response = lsUnifiedDailyCandleService.getUnifiedDailyCandlesContinue(
+                    shcode, gubun, LISTING_FLOOR_DATE, today, ctsDate, EXCHANGE_KRX);
+            applyDailyRows(etfId, response, upsert);
+            page++;
         }
     }
 
-    private void upsertDaily(Long etfId, LsPeriodPriceResponse.T1305OutBlock1 row) {
+    private void applyDailyRows(Long etfId, LsUnifiedDailyCandleResponse response,
+                                 BiConsumer<Long, LsUnifiedDailyCandleResponse.T8451OutBlock1> upsert) {
+        List<LsUnifiedDailyCandleResponse.T8451OutBlock1> rows = response.getT8451OutBlock1();
+        if (rows == null) {
+            return;
+        }
+        for (LsUnifiedDailyCandleResponse.T8451OutBlock1 row : rows) {
+            upsert.accept(etfId, row);
+        }
+    }
+
+    private void upsertDaily(Long etfId, LsUnifiedDailyCandleResponse.T8451OutBlock1 row) {
         LocalDateTime candleTime = parseDate(row.getDate());
+        long open = parse(row.getOpen());
+        long high = parse(row.getHigh());
+        long low = parse(row.getLow());
+        long close = parse(row.getClose());
+        long volume = parse(row.getJdiff_vol());
+        long tradeAmount = parse(row.getValue()) * MILLION;
+
         etfCandle1dRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                 .ifPresentOrElse(
-                        existing -> existing.updateSnapshot(
-                                Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION
-                        ),
-                        () -> etfCandle1dRepository.save(EtfCandle1d.of(
-                                etfId, Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION, candleTime
-                        ))
+                        existing -> existing.updateSnapshot(open, high, low, close, volume, tradeAmount),
+                        () -> etfCandle1dRepository.save(EtfCandle1d.of(etfId, open, high, low, close, volume, tradeAmount, candleTime))
                 );
     }
 
-    private void upsertWeekly(Long etfId, LsPeriodPriceResponse.T1305OutBlock1 row) {
+    private void upsertWeekly(Long etfId, LsUnifiedDailyCandleResponse.T8451OutBlock1 row) {
         LocalDateTime candleTime = parseDate(row.getDate());
+        long open = parse(row.getOpen());
+        long high = parse(row.getHigh());
+        long low = parse(row.getLow());
+        long close = parse(row.getClose());
+        long volume = parse(row.getJdiff_vol());
+        long tradeAmount = parse(row.getValue()) * MILLION;
+
         etfCandle1wRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                 .ifPresentOrElse(
-                        existing -> existing.updateSnapshot(
-                                Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION
-                        ),
-                        () -> etfCandle1wRepository.save(EtfCandle1w.of(
-                                etfId, Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION, candleTime
-                        ))
+                        existing -> existing.updateSnapshot(open, high, low, close, volume, tradeAmount),
+                        () -> etfCandle1wRepository.save(EtfCandle1w.of(etfId, open, high, low, close, volume, tradeAmount, candleTime))
                 );
     }
 
-    private void upsertMonthly(Long etfId, LsPeriodPriceResponse.T1305OutBlock1 row) {
+    private void upsertMonthly(Long etfId, LsUnifiedDailyCandleResponse.T8451OutBlock1 row) {
         LocalDateTime candleTime = parseDate(row.getDate());
+        long open = parse(row.getOpen());
+        long high = parse(row.getHigh());
+        long low = parse(row.getLow());
+        long close = parse(row.getClose());
+        long volume = parse(row.getJdiff_vol());
+        long tradeAmount = parse(row.getValue()) * MILLION;
+
         etfCandle1moRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                 .ifPresentOrElse(
-                        existing -> existing.updateSnapshot(
-                                Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION
-                        ),
-                        () -> etfCandle1moRepository.save(EtfCandle1mo.of(
-                                etfId, Long.parseLong(row.getOpen()), Long.parseLong(row.getHigh()),
-                                Long.parseLong(row.getLow()), Long.parseLong(row.getClose()),
-                                Long.parseLong(row.getVolume()), Long.parseLong(row.getValue()) * MILLION, candleTime
-                        ))
+                        existing -> existing.updateSnapshot(open, high, low, close, volume, tradeAmount),
+                        () -> etfCandle1moRepository.save(EtfCandle1mo.of(etfId, open, high, low, close, volume, tradeAmount, candleTime))
                 );
     }
 

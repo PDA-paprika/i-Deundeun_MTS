@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class EtfBackfillAdminService {
 
     private static final long DELAY_BETWEEN_CALLS_MS = 1000;
-    private static final int MINUTE_HISTORY_DAYS = 30;
+    private static final int MINUTE_HISTORY_DAYS = 90;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final EtfRepository etfRepository;
@@ -55,7 +55,8 @@ public class EtfBackfillAdminService {
             return;
         }
 
-        String today = LocalDate.now().format(DATE_FORMAT);
+        // 오늘 분봉은 실시간 적재가 채우는 중이라 동시 쓰기 충돌이 나므로, 어제까지만 백필한다.
+        String until = LocalDate.now().minusDays(1).format(DATE_FORMAT);
         String from = LocalDate.now().minusDays(MINUTE_HISTORY_DAYS).format(DATE_FORMAT);
 
         try {
@@ -65,13 +66,13 @@ public class EtfBackfillAdminService {
             sleep();
             etfCandleBackfillService.backfillMonthly(etf.getId(), code);
             sleep();
-            etfCandleBackfillService.backfillMinute1m(etf.getId(), code, from, today);
+            etfCandleBackfillService.backfillMinute1m(etf.getId(), code, from, until);
             sleep();
-            etfCandleBackfillService.backfillMinute10m(etf.getId(), code, from, today);
+            etfCandleBackfillService.backfillMinute10m(etf.getId(), code, from, until);
             sleep();
-            etfCandleBackfillService.backfillMinute30m(etf.getId(), code, from, today);
+            etfCandleBackfillService.backfillMinute30m(etf.getId(), code, from, until);
             sleep();
-            etfCandleBackfillService.backfillMinute60m(etf.getId(), code, from, today);
+            etfCandleBackfillService.backfillMinute60m(etf.getId(), code, from, until);
             sleep();
             log.info("[*] ETF 백필 완료. code={}", code);
         } catch (Exception e) {
