@@ -32,7 +32,7 @@ public class EtfBackfillAdminController {
     @PostMapping("/{code}/backfill")
     @Operation(
             summary = "특정 종목 캔들 강제 백필",
-            description = "일/주/월봉 + 최근 30일 분봉(1/10/30/60분)을 강제로 다시 채웁니다. 이미 있는 데이터는 upsert로 갱신됩니다."
+            description = "일/주/월봉(상장일 전체) + 최근 90일 분봉(1/10/30/60분)을 강제로 다시 채웁니다. 이미 있는 데이터는 upsert로 갱신됩니다."
     )
     public ResponseEntity<ApiResponse<Void>> backfillOne(@PathVariable String code) {
         etfBackfillAdminService.backfillOne(code);
@@ -42,7 +42,7 @@ public class EtfBackfillAdminController {
     @PostMapping("/backfill-all")
     @Operation(
             summary = "전종목 캔들 강제 백필 (백그라운드)",
-            description = "76개 전종목을 백그라운드에서 강제로 다시 백필합니다. 즉시 응답하고 서버 로그로 진행상황을 확인합니다."
+            description = "전종목을 백그라운드에서 강제로 다시 백필합니다. 즉시 응답하고 서버 로그로 진행상황을 확인합니다."
     )
     public ResponseEntity<ApiResponse<Void>> backfillAll() {
         etfBackfillAdminService.backfillAllAsync();
