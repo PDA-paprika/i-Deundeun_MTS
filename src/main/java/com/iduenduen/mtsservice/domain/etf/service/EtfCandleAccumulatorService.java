@@ -107,7 +107,10 @@ public class EtfCandleAccumulatorService {
         broadcastLiveCandle(code, "1d", KEY_1D, LocalDate.now().atStartOfDay());
 
         accumulateKey(KEY_1W + code, priceStr, volumeStr, weekBucket);
+        broadcastLiveCandle(code, "1w", KEY_1W, now.toLocalDate().with(DayOfWeek.MONDAY).atStartOfDay());
+
         accumulateKey(KEY_1MO + code, priceStr, volumeStr, monthBucket);
+        broadcastLiveCandle(code, "1mo", KEY_1MO, now.toLocalDate().withDayOfMonth(1).atStartOfDay());
     }
 
     private void broadcastLiveCandle(String code, String interval, String keyPrefix, LocalDateTime candleTime) {
