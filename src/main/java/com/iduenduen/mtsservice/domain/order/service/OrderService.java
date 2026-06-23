@@ -100,6 +100,8 @@ public class OrderService {
                 .referenceId(order.getId().toString())
                 .referenceType("EXECUTION")
                 .occurredAt(LocalDateTime.now())
+                .childId(order.getChildId())
+                .goalId(order.getGoalId())
                 .build();
 
         try {

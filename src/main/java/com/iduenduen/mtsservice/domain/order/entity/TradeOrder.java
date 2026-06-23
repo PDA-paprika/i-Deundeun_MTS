@@ -67,6 +67,12 @@ public class TradeOrder {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "child_id")
+    private Long childId;
+
+    @Column(name = "goal_id")
+    private Long goalId;
+
     public void fill(int filledQty) {
         this.remainingQty -= filledQty;
         if (this.remainingQty <= 0) {
