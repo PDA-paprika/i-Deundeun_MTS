@@ -48,4 +48,14 @@ public class EtfBackfillAdminController {
         etfBackfillAdminService.backfillAllAsync();
         return ApiResponse.success(SuccessStatus.SUCCESS_200);
     }
+
+    @PostMapping("/backfill-missing")
+    @Operation(
+            summary = "미완 종목만 캔들 백필 (백그라운드)",
+            description = "90일치 분봉이 아직 안 채워진 종목만 골라 백필합니다. 호출 제한 등으로 중단돼도 다시 호출하면 빠진 종목만 이어서 채울 수 있습니다."
+    )
+    public ResponseEntity<ApiResponse<Void>> backfillMissing() {
+        etfBackfillAdminService.backfillMissingAsync();
+        return ApiResponse.success(SuccessStatus.SUCCESS_200);
+    }
 }

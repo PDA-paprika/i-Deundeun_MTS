@@ -1,6 +1,7 @@
 package com.iduenduen.mtsservice.domain.etf.service;
 
 import com.iduenduen.mtsservice.domain.etf.entity.Etf;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1mRepository;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfRepository;
 import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
 
@@ -26,6 +27,7 @@ public class EtfBackfillAdminService {
     private final EtfRepository etfRepository;
     private final EtfPriceService etfPriceService;
     private final EtfCandleBackfillService etfCandleBackfillService;
+    private final EtfCandle1mRepository etfCandle1mRepository;
 
     // 아직 등록 안 된 종목만 시딩 (이미 있는 종목은 건드리지 않음)
     public void seedAll() {
@@ -98,6 +100,37 @@ public class EtfBackfillAdminService {
             backfillOne(code);
         }
         log.info("[*] 전종목 백필 완료.");
+    }
+
+    // 분봉 백필이 "이미 됐다"고 판정하는 기준일. 실시간 적재만 된 종목(최근 1~2일치)과
+    // 백필된 종목(약 90일치)을 확실히 구분하기 위해, 목표 범위(90일)보다 마진(7일)을 둔다.
+    private static final int FILLED_THRESHOLD_DAYS = MINUTE_HISTORY_DAYS - 7;
+
+    // 아직 90일치 분봉이 안 채워진 종목만 골라서 백필 (백그라운드).
+    // 호출 제한 등으로 중간에 실패해도 다시 호출하면 빠진 종목만 이어서 채울 수 있다.
+    @Async
+    public void backfillMissingAsync() {
+        LocalDate threshold = LocalDate.now().minusDays(FILLED_THRESHOLD_DAYS);
+        log.info("[*] 미완 종목 백필 시작. 채움기준={} 이전 데이터 존재 여부", threshold);
+
+        int skipped = 0;
+        int processed = 0;
+        for (String code : SolEtfCodes.CODES) {
+            Etf etf = etfRepository.findByCode(code).orElse(null);
+            if (etf != null && isMinuteFilled(etf.getId(), threshold)) {
+                skipped++;
+                continue;
+            }
+            backfillOne(code);
+            processed++;
+        }
+        log.info("[*] 미완 종목 백필 완료. 처리={}, 스킵(이미완료)={}", processed, skipped);
+    }
+
+    // threshold 이전의 1분봉이 하나라도 있으면 = 과거 백필이 된 종목으로 간주.
+    private boolean isMinuteFilled(Long etfId, LocalDate threshold) {
+        return etfCandle1mRepository.existsByEtfIdAndCandleTimeLessThanEqual(
+                etfId, threshold.atStartOfDay());
     }
 
     private void sleep() {
