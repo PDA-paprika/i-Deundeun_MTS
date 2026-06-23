@@ -17,6 +17,9 @@ public class CoreTradeRequest {
     @JsonProperty("parent_id")
     private Long parentId;
 
+    @JsonProperty("etf_id")
+    private Long etfId;
+
     @JsonProperty("event_type")
     private String eventType;
 

@@ -92,6 +92,7 @@ public class OrderService {
         CoreTradeRequest coreReq = CoreTradeRequest.builder()
                 .accountId(order.getAccountId())
                 .parentId(order.getParentId())
+                .etfId(order.getEtfId())
                 .eventType(order.getSide().name())
                 .externalEtfId(etfCode)
                 .qty(qty)
