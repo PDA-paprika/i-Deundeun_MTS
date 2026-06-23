@@ -29,6 +29,8 @@ public class EtfCandleBackfillService {
 
     private static final String LISTING_FLOOR_DATE = "19560101";
     private static final int MAX_PAGE = 100;
+    // LS API 초당 호출 제한 준수: 연속조회 페이지 사이 대기 (ms)
+    private static final long PAGE_DELAY_MS = 1000;
 
     private final LsUnifiedDailyCandleService lsUnifiedDailyCandleService;
     private final LsUnifiedMinuteCandleService lsUnifiedMinuteCandleService;
@@ -79,6 +81,7 @@ public class EtfCandleBackfillService {
 
         int page = 0;
         while (response.hasNext() && page < MAX_PAGE) {
+            throttle();
             String ctsDate = response.getT8451OutBlock().getCts_date();
             response = lsUnifiedDailyCandleService.getUnifiedDailyCandlesContinue(
                     shcode, gubun, LISTING_FLOOR_DATE, today, ctsDate, EXCHANGE_KRX);
@@ -100,6 +103,7 @@ public class EtfCandleBackfillService {
 
         int page = 0;
         while (response.hasNext() && page < MAX_PAGE) {
+            throttle();
             String ctsDate = response.getT8452OutBlock().getCts_date();
             String ctsTime = response.getT8452OutBlock().getCts_time();
             response = lsUnifiedMinuteCandleService.getUnifiedMinuteCandlesContinue(
@@ -124,6 +128,14 @@ public class EtfCandleBackfillService {
         List<LsUnifiedMinuteCandleResponse.T8452OutBlock1> rows = response.getT8452OutBlock1();
         if (rows != null) {
             target.addAll(rows);
+        }
+    }
+
+    private void throttle() {
+        try {
+            Thread.sleep(PAGE_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
