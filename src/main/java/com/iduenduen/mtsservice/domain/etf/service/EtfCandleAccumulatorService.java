@@ -29,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -39,6 +41,9 @@ import java.util.Map;
 public class EtfCandleAccumulatorService {
 
     private static final DateTimeFormatter BUCKET_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final LocalTime MARKET_OPEN = LocalTime.of(9, 0);
+    private static final LocalTime MARKET_CLOSE = LocalTime.of(15, 30);
 
     private static final String KEY_1M = "etf:candle:1m:";
     private static final String KEY_10M = "etf:candle:10m:";
@@ -68,12 +73,17 @@ public class EtfCandleAccumulatorService {
     private final EtfCandle1moRepository etfCandle1moRepository;
 
     public void accumulate(String code, long price, long cumulativeVolume) {
+        LocalDateTime now = LocalDateTime.now(KST);
+        LocalTime time = now.toLocalTime();
+        if (time.isBefore(MARKET_OPEN) || time.isAfter(MARKET_CLOSE)) {
+            return;
+        }
+
         long delta = computeVolumeDelta(code, cumulativeVolume);
         if (delta < 0) {
             delta = 0;
         }
 
-        LocalDateTime now = LocalDateTime.now();
         String nowBucket = now.format(BUCKET_FORMAT);
         String weekBucket = now.toLocalDate().with(DayOfWeek.MONDAY).atStartOfDay().format(BUCKET_FORMAT);
         String monthBucket = now.toLocalDate().withDayOfMonth(1).atStartOfDay().format(BUCKET_FORMAT);
