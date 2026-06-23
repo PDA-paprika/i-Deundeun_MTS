@@ -100,4 +100,14 @@ public class EtfController {
         EtfOrderBookResponse response = etfOrderBookService.getOrderBook(etfCode);
         return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
     }
+
+    @GetMapping("/id/{etfId}")
+    @Operation(
+            summary = "ETF 상세 조회 (ID)",
+            description = "ETF ID로 상세 정보를 조회합니다."
+    )
+    public ResponseEntity<ApiResponse<EtfDetailResponse>> getEtfDetailById(@PathVariable Long etfId) {
+        EtfDetailResponse response = etfQueryService.getEtfDetailById(etfId);
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
+    }
 }

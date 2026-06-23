@@ -62,6 +62,12 @@ public class EtfQueryService {
         return buildListResponse(etfs, "name", page, limit);
     }
 
+    public EtfDetailResponse getEtfDetailById(Long etfId) {
+        Etf etf = etfRepository.findById(etfId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));
+        return getEtfDetail(etf.getCode());
+    }
+
     private EtfListResponse buildListResponse(List<Etf> etfs, String sort, int page, int limit) {
         int normalizedPage = Math.max(page, 0);
         int normalizedLimit = Math.max(limit, 1);
