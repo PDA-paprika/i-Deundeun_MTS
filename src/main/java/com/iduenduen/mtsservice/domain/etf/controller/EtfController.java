@@ -6,6 +6,7 @@ import com.iduenduen.mtsservice.domain.etf.dto.EtfChartResponse;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfDetailResponse;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfListResponse;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfOrderBookResponse;
+import com.iduenduen.mtsservice.domain.etf.dto.EtfValuationAverageResponse;
 import com.iduenduen.mtsservice.domain.etf.service.EtfChartService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfOrderBookService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfQueryService;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @RestController
@@ -98,6 +100,20 @@ public class EtfController {
     )
     public ResponseEntity<ApiResponse<EtfOrderBookResponse>> getEtfOrderBook(@PathVariable String etfCode) {
         EtfOrderBookResponse response = etfOrderBookService.getOrderBook(etfCode);
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
+    }
+
+    @GetMapping("/{etfCode}/valuation-average")
+    @Operation(
+            summary = "ETF 평가기간 평균가 조회",
+            description = "지정 기간의 일봉 종가 평균을 반환합니다. ETF 현물 증여 평가금액 산정에 사용됩니다."
+    )
+    public ResponseEntity<ApiResponse<EtfValuationAverageResponse>> getValuationAverage(
+            @PathVariable String etfCode,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        EtfValuationAverageResponse response = etfQueryService.getValuationAverage(etfCode, from, to);
         return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
     }
 
