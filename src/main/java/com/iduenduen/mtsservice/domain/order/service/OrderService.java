@@ -94,14 +94,11 @@ public class OrderService {
                 .parentId(order.getParentId())
                 .etfId(order.getEtfId())
                 .eventType(order.getSide().name())
-                .externalEtfId(etfCode)
                 .qty(qty)
                 .price(execPrice)
                 .referenceId(order.getId().toString())
                 .referenceType("EXECUTION")
                 .occurredAt(LocalDateTime.now())
-                .childId(order.getChildId())
-                .goalId(order.getGoalId())
                 .build();
 
         try {
