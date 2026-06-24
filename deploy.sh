@@ -39,7 +39,7 @@ echo "새 배포 대상: $NEXT_NAME / port $NEXT_PORT"
 
 docker rm -f $NEXT_NAME || true
 
-DOCKER_USERNAME=$DOCKER_USERNAME IMAGE_TAG=$IMAGE_TAG docker-compose -f $COMPOSE_FILE up -d
+DOCKER_USERNAME=$DOCKER_USERNAME IMAGE_TAG=$IMAGE_TAG docker compose -f $COMPOSE_FILE up -d
 
 echo "Health check 시작"
 
