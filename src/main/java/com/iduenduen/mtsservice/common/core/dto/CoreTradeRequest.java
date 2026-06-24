@@ -23,6 +23,9 @@ public class CoreTradeRequest {
     @JsonProperty("event_type")
     private String eventType;
 
+    @JsonProperty("etf_name")
+    private String etfName;
+
     private Integer qty;
 
     private Long price;

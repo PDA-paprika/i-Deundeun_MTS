@@ -17,4 +17,5 @@ public class OrderRequest {
     private Long price;
     private int qty;
     private Long etfId;
+    private String etfName;
 }
