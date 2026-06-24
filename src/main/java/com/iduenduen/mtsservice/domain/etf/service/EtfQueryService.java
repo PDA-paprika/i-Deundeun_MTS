@@ -5,6 +5,7 @@ import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfDetailResponse;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfListItem;
 import com.iduenduen.mtsservice.domain.etf.dto.EtfListResponse;
+import com.iduenduen.mtsservice.domain.etf.dto.EtfValuationAverageResponse;
 import com.iduenduen.mtsservice.domain.etf.entity.Etf;
 import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1d;
 import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1dRepository;
@@ -14,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -60,6 +63,25 @@ public class EtfQueryService {
 
         List<Etf> etfs = etfRepository.findByNameContainingIgnoreCaseOrCodeContainingIgnoreCase(keyword, keyword);
         return buildListResponse(etfs, "name", page, limit);
+    }
+
+    public EtfValuationAverageResponse getValuationAverage(String code, LocalDate from, LocalDate to) {
+        Etf etf = etfRepository.findByCode(code)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));
+
+        Double avg = etfCandle1dRepository.findAverageClosePriceByEtfIdAndPeriod(
+                etf.getId(),
+                from.atStartOfDay(),
+                to.atTime(LocalTime.MAX));
+
+        long averagePrice = avg != null ? Math.round(avg) : 0L;
+
+        return EtfValuationAverageResponse.builder()
+                .etfCode(code)
+                .from(from)
+                .to(to)
+                .averagePrice(averagePrice)
+                .build();
     }
 
     public EtfDetailResponse getEtfDetailById(Long etfId) {
