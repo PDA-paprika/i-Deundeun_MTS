@@ -107,15 +107,19 @@ public class EtfQueryService {
     }
 
     private LiveQuote resolveQuote(String code, EtfCandle1d today, List<EtfCandle1d> latestTwo) {
-        long previousClose = latestTwo.size() > 1 ? latestTwo.get(1).getClosePrice() : today.getClosePrice();
-
+        // 실시간 캐시가 있으면 가격·전일대비·등락률·거래량을 그대로 사용한다(WS와 동일 출처).
+        // → REST 초기값과 WS 실시간값의 기준이 같아 화면에서 값이 튀지 않는다.
         Optional<EtfRealtimeCacheService.PriceSnapshot> cached = etfRealtimeCacheService.getCachedPrice(code);
-        long currentPrice = cached.map(EtfRealtimeCacheService.PriceSnapshot::price).orElse(today.getClosePrice());
-        long volume = cached.map(EtfRealtimeCacheService.PriceSnapshot::volume).orElse(today.getVolume());
+        if (cached.isPresent()) {
+            EtfRealtimeCacheService.PriceSnapshot s = cached.get();
+            return new LiveQuote(s.price(), s.change(), s.changeRate(), s.volume());
+        }
 
-        long priceChange = currentPrice - previousClose;
+        // 캐시 없으면(장 시작 전·피드 미수신) 당일 일봉 종가 기준으로 계산한다.
+        long previousClose = latestTwo.size() > 1 ? latestTwo.get(1).getClosePrice() : today.getClosePrice();
+        long priceChange = today.getClosePrice() - previousClose;
         double changeRate = previousClose == 0 ? 0.0 : (priceChange * 100.0) / previousClose;
-        return new LiveQuote(currentPrice, priceChange, changeRate, volume);
+        return new LiveQuote(today.getClosePrice(), priceChange, changeRate, today.getVolume());
     }
 
     private Comparator<RankedItem> comparatorFor(String sort) {

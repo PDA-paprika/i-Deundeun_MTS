@@ -144,9 +144,16 @@ public class LsRealtimeConnector {
         long price = body.path("price").asLong();
         long volume = body.path("volume").asLong();
         long change = body.path("change").asLong();
+        // I5_의 change(전일대비)는 부호 없이 절대값으로 오고, 방향은 sign(전일대비구분)이 준다.
+        // LS sign: 1 상한, 2 상승, 3 보합, 4 하한, 5 하락 → 4/5는 하락(음수).
+        String sign = body.path("sign").asText();
+        long signedChange = ("4".equals(sign) || "5".equals(sign)) ? -change : change;
+        // 등락률(%) = 전일대비 / 전일종가 * 100, 전일종가 = 현재가 - 전일대비(부호 포함).
+        long prevClose = price - signedChange;
+        double changeRate = prevClose != 0 ? (double) signedChange / prevClose * 100.0 : 0.0;
 
-        etfPriceWebSocketHandler.broadcastPriceUpdate(shcode, price, change, 0.0, volume);
-        etfRealtimeCacheService.cachePrice(shcode, price, change, 0.0, volume);
+        etfPriceWebSocketHandler.broadcastPriceUpdate(shcode, price, signedChange, changeRate, volume);
+        etfRealtimeCacheService.cachePrice(shcode, price, signedChange, changeRate, volume);
 
         if (!persistEnabled) {
             return;
