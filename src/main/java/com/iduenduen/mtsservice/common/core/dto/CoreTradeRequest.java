@@ -23,9 +23,6 @@ public class CoreTradeRequest {
     @JsonProperty("event_type")
     private String eventType;
 
-    @JsonProperty("external_etf_id")
-    private String externalEtfId;
-
     private Integer qty;
 
     private Long price;
@@ -39,10 +36,4 @@ public class CoreTradeRequest {
     @JsonFormat(pattern = "yyyy.MM.dd HH:mm:ss")
     @JsonProperty("occurred_at")
     private LocalDateTime occurredAt;
-
-    @JsonProperty("child_id")
-    private Long childId;
-
-    @JsonProperty("goal_id")
-    private Long goalId;
 }
