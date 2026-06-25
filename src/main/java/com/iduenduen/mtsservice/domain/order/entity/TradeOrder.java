@@ -59,6 +59,12 @@ public class TradeOrder {
     @Column(name = "ls_ordno", length = 20)
     private String lsOrdno;
 
+    @Column(name = "child_id")
+    private Long childId;
+
+    @Column(name = "goal_id")
+    private Long goalId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
