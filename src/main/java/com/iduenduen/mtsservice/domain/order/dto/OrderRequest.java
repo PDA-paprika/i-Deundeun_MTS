@@ -18,4 +18,6 @@ public class OrderRequest {
     private int qty;
     private Long etfId;
     private String etfName;
+    private Long childId;
+    private Long goalId;
 }

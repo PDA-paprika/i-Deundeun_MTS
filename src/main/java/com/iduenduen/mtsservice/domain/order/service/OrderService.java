@@ -64,10 +64,12 @@ public class OrderService {
                 .qty(request.getQty())
                 .remainingQty(request.getQty())
                 .status(OrderStatus.PENDING)
+                .childId(request.getChildId())
+                .goalId(request.getGoalId())
                 .build();
         tradeOrderRepository.save(order);
 
-        execute(order, request.getEtfCode(), execPrice, request.getEtfName());
+        execute(order, request.getEtfCode(), execPrice, request.getEtfName(), request.getChildId(), request.getGoalId());
 
         return OrderResponse.builder()
                 .orderId(order.getId())
@@ -85,7 +87,7 @@ public class OrderService {
         return request.getPrice() != null ? request.getPrice() : 0L;
     }
 
-    private void execute(TradeOrder order, String etfCode, long execPrice, String etfName) {
+    private void execute(TradeOrder order, String etfCode, long execPrice, String etfName, Long childId, Long goalId) {
         int qty = order.getQty();
         order.fill(qty);
 
@@ -100,6 +102,8 @@ public class OrderService {
                 .referenceId(order.getId().toString())
                 .referenceType("EXECUTION")
                 .occurredAt(LocalDateTime.now())
+                .childId(order.getChildId())
+                .goalId(order.getGoalId())
                 .build();
 
         try {
