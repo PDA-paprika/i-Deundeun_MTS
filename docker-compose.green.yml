@@ -9,3 +9,8 @@ services:
     environment:
       SPRING_CONFIG_LOCATION: /app/application.yml
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

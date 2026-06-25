@@ -66,6 +66,9 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 docker rm -f $CURRENT_NAME || true
-docker image prune -f
+
+# 사용하지 않는 옛 이미지 정리 (태그 이미지 포함, 24시간 이내 것은 롤백용으로 보존)
+# 현재 운영 중인 컨테이너가 쓰는 이미지는 "사용 중"이라 삭제되지 않음
+docker image prune -af --filter "until=24h"
 
 echo "ETF/MTS Server Blue/Green 배포 완료"
