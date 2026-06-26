@@ -26,6 +26,11 @@ public class LsTokenManager {
         return refresh();
     }
 
+    public void clearToken() {
+        redisTemplate.delete(TOKEN_KEY);
+        log.info("LS access token cache cleared.");
+    }
+
     private synchronized String refresh() {
         String cached = redisTemplate.opsForValue().get(TOKEN_KEY);
         if (cached != null) {

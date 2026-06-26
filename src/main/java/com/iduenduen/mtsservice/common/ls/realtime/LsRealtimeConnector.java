@@ -56,6 +56,7 @@ public class LsRealtimeConnector {
     @PostConstruct
     public void start() {
         log.info("Starting LS realtime connector. enabled=true, persistEnabled={}, url={}", persistEnabled, lsProperties.getWsUrl());
+        lsTokenManager.clearToken();
         connect();
     }
 
@@ -68,6 +69,12 @@ public class LsRealtimeConnector {
                         scheduleReconnect();
                     }
                 });
+    }
+
+    public void reconnect() {
+        lsTokenManager.clearToken();
+        log.info("LS realtime connector reconnecting with fresh token.");
+        scheduleReconnect();
     }
 
     private void scheduleReconnect() {
@@ -94,6 +101,7 @@ public class LsRealtimeConnector {
         @Override
         public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
             log.warn("LS realtime websocket closed. status={}. Reconnect scheduled.", status);
+            lsTokenManager.clearToken();
             scheduleReconnect();
         }
 
