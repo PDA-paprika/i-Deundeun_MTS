@@ -20,7 +20,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 @Slf4j
 @Service
@@ -35,9 +38,16 @@ public class OrderService {
     @Transactional
     public OrderResponse submitOrder(OrderRequest request, String authHeader) {
 
+        LocalTime now = LocalTime.now(ZoneId.of("Asia/Seoul"));
+        if (now.isBefore(LocalTime.of(9, 0)) || now.isAfter(LocalTime.of(15, 30))) {
+            throw new GeneralException(ErrorStatus.MARKET_CLOSED);
+        }
+
         if (request.getSide() == OrderSide.BUY) {
             AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId(), authHeader);
-            long orderAmount = request.getOrderType() == OrderType.MARKET ? 0L : request.getPrice() * request.getQty();
+            long orderAmount = etfRealtimeCacheService.getCachedPrice(request.getEtfCode())
+                    .map(p -> p.price() * request.getQty())
+                    .orElse(0L);
             if (balance.getAvailableAmt() < orderAmount) {
                 throw new GeneralException(ErrorStatus.INSUFFICIENT_BALANCE);
             }
