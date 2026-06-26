@@ -64,6 +64,8 @@ public class OrderService {
                 .qty(request.getQty())
                 .remainingQty(request.getQty())
                 .status(OrderStatus.PENDING)
+                .childId(request.getChildId())
+                .goalId(request.getGoalId())
                 .build();
         tradeOrderRepository.save(order);
 
