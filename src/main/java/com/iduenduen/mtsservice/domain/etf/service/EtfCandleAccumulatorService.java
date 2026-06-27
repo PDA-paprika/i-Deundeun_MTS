@@ -166,60 +166,48 @@ public class EtfCandleAccumulatorService {
 
     @Transactional
     public void flush1m(String code) {
-        flush(code, KEY_1M, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = LocalDateTime.now().withSecond(0).withNano(0);
-            upsert1m(etfId, data, candleTime);
-        }, "1분봉");
+        flush(code, KEY_1M, (etfId, data, snapKey) ->
+                upsert1m(etfId, data, bucketTimeFromData(data, 1)), "1분봉");
     }
 
     @Transactional
     public void flush10m(String code) {
-        flush(code, KEY_10M, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = flooredNow(10);
-            upsert10m(etfId, data, candleTime);
-        }, "10분봉");
+        flush(code, KEY_10M, (etfId, data, snapKey) ->
+                upsert10m(etfId, data, bucketTimeFromData(data, 10)), "10분봉");
     }
 
     @Transactional
     public void flush30m(String code) {
-        flush(code, KEY_30M, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = flooredNow(30);
-            upsert30m(etfId, data, candleTime);
-        }, "30분봉");
+        flush(code, KEY_30M, (etfId, data, snapKey) ->
+                upsert30m(etfId, data, bucketTimeFromData(data, 30)), "30분봉");
     }
 
     @Transactional
     public void flush60m(String code) {
-        flush(code, KEY_60M, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = flooredNow(60);
-            upsert60m(etfId, data, candleTime);
-        }, "60분봉");
+        flush(code, KEY_60M, (etfId, data, snapKey) ->
+                upsert60m(etfId, data, bucketTimeFromData(data, 60)), "60분봉");
     }
 
     @Transactional
     public void flushDaily(String code) {
-        flush(code, KEY_1D, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
-            upsertDaily(etfId, data, candleTime);
-        }, "일봉");
+        flush(code, KEY_1D, (etfId, data, snapKey) ->
+                upsertDaily(etfId, data, parseStartTime(data).toLocalDate().atStartOfDay()), "일봉");
     }
 
-    // 금요일(또는 그 주 마지막 영업일) 장마감에만 호출됨 - t1305 백필과 동일하게 "그 날" 날짜로 저장
+    // 금요일(또는 그 주 마지막 영업일) 장마감에만 호출됨 - 그 주 월요일 날짜로 저장
     @Transactional
     public void flushWeekly(String code) {
-        flush(code, KEY_1W, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
-            upsertWeekly(etfId, data, candleTime);
-        }, "주봉");
+        flush(code, KEY_1W, (etfId, data, snapKey) ->
+                upsertWeekly(etfId, data,
+                        parseStartTime(data).toLocalDate().with(DayOfWeek.MONDAY).atStartOfDay()), "주봉");
     }
 
-    // 그 달의 마지막 영업일에만 호출됨 - t1305 백필과 동일하게 "그 날" 날짜로 저장
+    // 그 달의 마지막 영업일에만 호출됨 - 그 달 1일 날짜로 저장
     @Transactional
     public void flushMonthly(String code) {
-        flush(code, KEY_1MO, (etfId, data, snapKey) -> {
-            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
-            upsertMonthly(etfId, data, candleTime);
-        }, "월봉");
+        flush(code, KEY_1MO, (etfId, data, snapKey) ->
+                upsertMonthly(etfId, data,
+                        parseStartTime(data).toLocalDate().withDayOfMonth(1).atStartOfDay()), "월봉");
     }
 
     private void flush(String code, String keyPrefix, FlushAction action, String label) {
@@ -261,6 +249,23 @@ public class EtfCandleAccumulatorService {
         LocalDateTime now = LocalDateTime.now();
         int floored = now.getMinute() - (now.getMinute() % bucketMinutes);
         return now.withMinute(floored).withSecond(0).withNano(0);
+    }
+
+    // Redis에 저장된 startTime(첫 틱 시각, KST "yyyyMMddHHmm")을 파싱한다.
+    // flush 순간의 now()로 라벨을 매기면 서버 타임존/플러시 지연에 따라 시각이 틀어지므로,
+    // 데이터가 실제로 속한 시각을 그대로 사용해 봉 시각이 어긋나지 않게 한다.
+    private LocalDateTime parseStartTime(Map<Object, Object> data) {
+        String startTime = (String) data.get("startTime");
+        return (startTime != null)
+                ? LocalDateTime.parse(startTime, BUCKET_FORMAT)
+                : LocalDateTime.now(KST).withSecond(0).withNano(0);
+    }
+
+    // startTime을 bucketMinutes 단위로 내려 분봉 버킷 시작 시각을 만든다 (ex. 09:17 → 30분봉이면 09:00).
+    private LocalDateTime bucketTimeFromData(Map<Object, Object> data, int bucketMinutes) {
+        LocalDateTime raw = parseStartTime(data);
+        int floored = (raw.getMinute() / bucketMinutes) * bucketMinutes;
+        return raw.toLocalDate().atTime(raw.getHour(), floored);
     }
 
     private long parse(Object value) {
