@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,13 @@ public class EtfChartService {
 
     private static final Set<String> SUPPORTED_INTERVALS = Set.of("1m", "10m", "30m", "60m", "1d", "1w", "1mo");
     private static final LocalDateTime DEFAULT_FROM = LocalDateTime.of(2000, 1, 1, 0, 0);
+
+    // 분봉 계열만 정규장 시간 필터를 적용한다. 일/주/월봉은 candleTime이 00:00이라 제외.
+    // 봉 시각은 "끝시각" 라벨이라 정규장 마지막 봉은 1/10/30분봉=15:30, 60분봉=16:00(15:00~16:00 구간).
+    private static final Set<String> MINUTE_INTERVALS = Set.of("1m", "10m", "30m", "60m");
+    private static final LocalTime SESSION_OPEN = LocalTime.of(9, 0);
+    private static final LocalTime SESSION_CLOSE = LocalTime.of(15, 30);
+    private static final LocalTime SESSION_CLOSE_60M = LocalTime.of(16, 0);
 
     private final EtfRepository etfRepository;
     private final EtfCandle1mRepository etfCandle1mRepository;
@@ -96,12 +104,41 @@ public class EtfChartService {
             default -> throw new GeneralException(ErrorStatus.BAD_REQUEST);
         };
 
+        // 정규장(09:00~15:30) 외 데이터 제외 + 60분봉 마감봉(15:30) 표기 보정. 라이브 캔들 병합 전에 적용.
+        candles = applySessionRules(interval, candles);
+
         // to가 명시적으로 과거로 지정된 조회(페이징/히스토리)는 진행 중인 캔들을 끼워넣지 않음
         if (to == null) {
             candles = withLiveCandle(candles, etfCode, interval);
         }
 
         return EtfChartResponse.of(etfCode, interval, candles);
+    }
+
+    // 분봉 계열만: (1) 정규장 밖(장전/시간외, 예: 15:50·18:00) 봉 제외, (2) 60분봉의 이상치 15:30 라벨을 16:00으로 보정.
+    // 60분봉은 정규장 마지막 봉이 16:00이므로 16:00까지 허용하고, 그 외 분봉은 15:30까지만 허용한다.
+    private List<ChartCandle> applySessionRules(String interval, List<ChartCandle> candles) {
+        if (!MINUTE_INTERVALS.contains(interval)) {
+            return candles;
+        }
+        boolean is60m = "60m".equals(interval);
+        LocalTime close = is60m ? SESSION_CLOSE_60M : SESSION_CLOSE;
+        List<ChartCandle> result = new ArrayList<>(candles.size());
+        for (ChartCandle c : candles) {
+            LocalTime t = c.getCandleTime().toLocalTime();
+            if (t.isBefore(SESSION_OPEN) || t.isAfter(close)) {
+                continue;
+            }
+            if (is60m && t.equals(SESSION_CLOSE)) {
+                // 드물게 15:30으로 찍힌 60분봉 마감봉을 정상 컨벤션(16:00)으로 통일
+                result.add(ChartCandle.of(
+                        c.getCandleTime().toLocalDate().atTime(16, 0),
+                        c.getOpen(), c.getHigh(), c.getLow(), c.getClose(), c.getVolume()));
+            } else {
+                result.add(c);
+            }
+        }
+        return result;
     }
 
     private List<ChartCandle> withLiveCandle(List<ChartCandle> candles, String code, String interval) {

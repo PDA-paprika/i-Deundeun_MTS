@@ -23,8 +23,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -42,6 +44,17 @@ public class EtfCandlePersistService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter DATETIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final int BATCH_SIZE = 500;
+
+    // 봉은 "끝시각" 라벨. 정규장 분봉만 저장(장전/시간외 제외): 1/10/30분봉=09:00~15:30, 60분봉=09:00~16:00.
+    private static final LocalTime SESSION_OPEN = LocalTime.of(9, 0);
+    private static final LocalTime SESSION_CLOSE = LocalTime.of(15, 30);
+    private static final LocalTime SESSION_CLOSE_60M = LocalTime.of(16, 0);
+
+    // 정규장 시간 밖(장전/시간외) 분봉이면 true → 저장 스킵.
+    private boolean outOfSession(LocalDateTime candleTime, LocalTime close) {
+        LocalTime t = candleTime.toLocalTime();
+        return t.isBefore(SESSION_OPEN) || t.isAfter(close);
+    }
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -72,9 +85,12 @@ public class EtfCandlePersistService {
 
     @Transactional
     public void saveWeekly(Long etfId, List<LsUnifiedDailyCandleResponse.T8451OutBlock1> rows) {
+        // 진행 중인 주는 백필 때마다 그날 날짜로 새 행이 쌓여 중복이 생기므로, 완료된 주(이번 주 월요일 이전)만 저장한다.
+        LocalDate currentWeekMonday = LocalDate.now().with(DayOfWeek.MONDAY);
         int i = 0;
         for (LsUnifiedDailyCandleResponse.T8451OutBlock1 row : rows) {
             LocalDateTime candleTime = parseDate(row.getDate());
+            if (!candleTime.toLocalDate().isBefore(currentWeekMonday)) continue;
             etfCandle1wRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
@@ -88,9 +104,12 @@ public class EtfCandlePersistService {
 
     @Transactional
     public void saveMonthly(Long etfId, List<LsUnifiedDailyCandleResponse.T8451OutBlock1> rows) {
+        // 진행 중인 달은 백필 때마다 그날 날짜로 새 행이 쌓여 중복이 생기므로, 완료된 달(이번 달 1일 이전)만 저장한다.
+        LocalDate currentMonthFirst = LocalDate.now().withDayOfMonth(1);
         int i = 0;
         for (LsUnifiedDailyCandleResponse.T8451OutBlock1 row : rows) {
             LocalDateTime candleTime = parseDate(row.getDate());
+            if (!candleTime.toLocalDate().isBefore(currentMonthFirst)) continue;
             etfCandle1moRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
@@ -107,6 +126,7 @@ public class EtfCandlePersistService {
         int i = 0;
         for (LsUnifiedMinuteCandleResponse.T8452OutBlock1 row : rows) {
             LocalDateTime candleTime = parseCandleDateTime(row.getDate(), row.getTime());
+            if (outOfSession(candleTime, SESSION_CLOSE)) continue;
             etfCandle1mRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
@@ -123,6 +143,7 @@ public class EtfCandlePersistService {
         int i = 0;
         for (LsUnifiedMinuteCandleResponse.T8452OutBlock1 row : rows) {
             LocalDateTime candleTime = parseCandleDateTime(row.getDate(), row.getTime());
+            if (outOfSession(candleTime, SESSION_CLOSE)) continue;
             etfCandle10mRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
@@ -139,6 +160,7 @@ public class EtfCandlePersistService {
         int i = 0;
         for (LsUnifiedMinuteCandleResponse.T8452OutBlock1 row : rows) {
             LocalDateTime candleTime = parseCandleDateTime(row.getDate(), row.getTime());
+            if (outOfSession(candleTime, SESSION_CLOSE)) continue;
             etfCandle30mRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
@@ -155,6 +177,7 @@ public class EtfCandlePersistService {
         int i = 0;
         for (LsUnifiedMinuteCandleResponse.T8452OutBlock1 row : rows) {
             LocalDateTime candleTime = parseCandleDateTime(row.getDate(), row.getTime());
+            if (outOfSession(candleTime, SESSION_CLOSE_60M)) continue;
             etfCandle60mRepository.findByEtfIdAndCandleTime(etfId, candleTime)
                     .ifPresentOrElse(
                             existing -> existing.updateSnapshot(parse(row.getOpen()), parse(row.getHigh()),
