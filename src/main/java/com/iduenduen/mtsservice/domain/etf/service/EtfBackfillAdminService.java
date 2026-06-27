@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
@@ -100,6 +101,46 @@ public class EtfBackfillAdminService {
             backfillOne(code);
         }
         log.info("[*] 전종목 백필 완료.");
+    }
+
+    // 직전 영업일 "하루치"만 전종목 분봉(1/10/30/60m) 재적재(upsert). 새벽 self-heal용 경량 백필.
+    // 일/주/월봉은 실시간 flush와 경계 flush가 채우므로 야간 보정에서는 제외한다.
+    @Async
+    public void backfillYesterdayAsync() {
+        String day = lastTradingDay(LocalDate.now()).format(DATE_FORMAT);
+        log.info("[*] 직전 영업일 분봉 백필 시작. 대상일={}, 종목수={}", day, SolEtfCodes.CODES.size());
+        for (String code : SolEtfCodes.CODES) {
+            backfillYesterdayMinutes(code, day);
+        }
+        log.info("[*] 직전 영업일 분봉 백필 완료. 대상일={}", day);
+    }
+
+    // 한 종목의 직전 영업일 분봉만 보정 (sdate=edate=day → 하루치).
+    private void backfillYesterdayMinutes(String code, String day) {
+        Etf etf = etfRepository.findByCode(code).orElse(null);
+        if (etf == null) {
+            log.warn("[*] 백필 대상 종목 없음. code={}", code);
+            return;
+        }
+        Long etfId = etf.getId();
+
+        int failed = 0;
+        failed += runStep(code, "1분봉", () -> etfCandleBackfillService.backfillMinute1m(etfId, code, day, day));
+        failed += runStep(code, "10분봉", () -> etfCandleBackfillService.backfillMinute10m(etfId, code, day, day));
+        failed += runStep(code, "30분봉", () -> etfCandleBackfillService.backfillMinute30m(etfId, code, day, day));
+        failed += runStep(code, "60분봉", () -> etfCandleBackfillService.backfillMinute60m(etfId, code, day, day));
+
+        if (failed > 0) {
+            log.warn("[*] 직전 영업일 분봉 백필 일부 실패. code={}, 실패단계수={}", code, failed);
+        }
+    }
+
+    // 직전 영업일 계산 (주말 스킵). 월요일 새벽이면 금요일을 가리킨다.
+    private LocalDate lastTradingDay(LocalDate date) {
+        LocalDate prev = date.minusDays(1);
+        if (prev.getDayOfWeek() == DayOfWeek.SUNDAY)   return prev.minusDays(2);
+        if (prev.getDayOfWeek() == DayOfWeek.SATURDAY) return prev.minusDays(1);
+        return prev;
     }
 
     // 분봉 백필이 "이미 됐다"고 판정하는 기준일. 실시간 적재만 된 종목(최근 1~2일치)과

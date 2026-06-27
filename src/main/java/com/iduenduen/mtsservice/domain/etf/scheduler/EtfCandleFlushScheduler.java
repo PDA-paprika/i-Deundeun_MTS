@@ -1,6 +1,7 @@
 package com.iduenduen.mtsservice.domain.etf.scheduler;
 
 import com.iduenduen.mtsservice.domain.etf.seed.SolEtfCodes;
+import com.iduenduen.mtsservice.domain.etf.service.EtfBackfillAdminService;
 import com.iduenduen.mtsservice.domain.etf.service.EtfCandleAccumulatorService;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
 public class EtfCandleFlushScheduler {
 
     private final EtfCandleAccumulatorService etfCandleAccumulatorService;
+    private final EtfBackfillAdminService etfBackfillAdminService;
 
     // 매분 0초: 1분봉 flush
     @Scheduled(cron = "0 * * * * MON-FRI")
@@ -60,6 +62,15 @@ public class EtfCandleFlushScheduler {
     public void flushWeekly() {
         log.info("[주봉 flush] 금요일 장마감 - 주봉 flush 시작");
         SolEtfCodes.CODES.forEach(etfCandleAccumulatorService::flushWeekly);
+    }
+
+    // 매 영업일 05:30: 직전 영업일 "하루치" 분봉을 브로커 원본으로 재적재(upsert)해 누락/오염 자동 보정.
+    // 실시간 적재가 비거나 어긋난 구간을 다음 날 아침에 권위 있는 데이터로 self-heal 한다.
+    // backfillYesterdayAsync는 @Async라 스케줄러 스레드를 막지 않는다.
+    @Scheduled(cron = "0 30 5 * * MON-FRI")
+    public void backfillCandles() {
+        log.info("[백필] 새벽 자동 백필 시작 - 직전 영업일 분봉 보정");
+        etfBackfillAdminService.backfillYesterdayAsync();
     }
 
     private boolean isLastTradingDayOfMonth(LocalDate today) {
