@@ -64,6 +64,7 @@ public class EtfCandleAccumulatorService {
     private final StringRedisTemplate redisTemplate;
     private final EtfRepository etfRepository;
     private final EtfCandleWebSocketHandler etfCandleWebSocketHandler;
+    private final EtfRealtimeCacheService etfRealtimeCacheService;
     private final EtfCandle1mRepository etfCandle1mRepository;
     private final EtfCandle10mRepository etfCandle10mRepository;
     private final EtfCandle30mRepository etfCandle30mRepository;
@@ -198,9 +199,14 @@ public class EtfCandleAccumulatorService {
 
     @Transactional
     public void flushDaily(String code) {
+        // 실시간 누적거래대금(I5_ value)은 가격 캐시에 들어있다. 일봉에 그 최종 누적거래대금을 저장한다.
+        // (실시간 OHLCV 누적 경로는 거래대금을 추적하지 않아 기존엔 일봉 tradeAmount가 0으로 굳었다.)
+        long tradeAmount = etfRealtimeCacheService.getCachedPrice(code)
+                .map(EtfRealtimeCacheService.PriceSnapshot::tradeAmount)
+                .orElse(0L);
         flush(code, KEY_1D, (etfId, data, snapKey) -> {
             LocalDateTime candleTime = LocalDate.now().atStartOfDay();
-            upsertDaily(etfId, data, candleTime);
+            upsertDaily(etfId, data, candleTime, tradeAmount);
         }, "일봉");
     }
 
@@ -303,12 +309,14 @@ public class EtfCandleAccumulatorService {
         );
     }
 
-    private void upsertDaily(Long etfId, Map<Object, Object> data, LocalDateTime candleTime) {
+    private void upsertDaily(Long etfId, Map<Object, Object> data, LocalDateTime candleTime, long tradeAmount) {
         long open = parse(data.get("open")), high = parse(data.get("high")), low = parse(data.get("low"));
         long close = parse(data.get("close")), volume = parse(data.get("volume"));
+        // 거래대금 캐시가 비어 0이면 기존 값을 보존(백필로 채워둔 값 등을 0으로 덮지 않음).
         etfCandle1dRepository.findByEtfIdAndCandleTime(etfId, candleTime).ifPresentOrElse(
-                existing -> existing.updateSnapshot(open, high, low, close, volume, existing.getTradeAmount()),
-                () -> etfCandle1dRepository.save(EtfCandle1d.of(etfId, open, high, low, close, volume, 0L, candleTime))
+                existing -> existing.updateSnapshot(open, high, low, close, volume,
+                        tradeAmount > 0 ? tradeAmount : existing.getTradeAmount()),
+                () -> etfCandle1dRepository.save(EtfCandle1d.of(etfId, open, high, low, close, volume, tradeAmount, candleTime))
         );
     }
 

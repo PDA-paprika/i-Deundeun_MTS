@@ -44,7 +44,7 @@ public class EtfQueryService {
 
         return EtfDetailResponse.of(
                 etf, quote.currentPrice(), quote.priceChange(), quote.changeRate(),
-                today.getHighPrice(), today.getLowPrice(), quote.volume(), today.getTradeAmount()
+                today.getHighPrice(), today.getLowPrice(), quote.volume(), quote.tradeAmount()
         );
     }
 
@@ -122,10 +122,10 @@ public class EtfQueryService {
         long marketCap = quote.currentPrice() * etf.getListing();
 
         EtfListItem listItem = EtfListItem.of(
-                etf, quote.currentPrice(), quote.priceChange(), quote.changeRate(), quote.volume(), today.getTradeAmount()
+                etf, quote.currentPrice(), quote.priceChange(), quote.changeRate(), quote.volume(), quote.tradeAmount()
         );
 
-        return new RankedItem(listItem, quote.volume(), today.getTradeAmount(), quote.changeRate(), marketCap, etf.getName());
+        return new RankedItem(listItem, quote.volume(), quote.tradeAmount(), quote.changeRate(), marketCap, etf.getName());
     }
 
     private LiveQuote resolveQuote(String code, EtfCandle1d today, List<EtfCandle1d> latestTwo) {
@@ -134,14 +134,16 @@ public class EtfQueryService {
         Optional<EtfRealtimeCacheService.PriceSnapshot> cached = etfRealtimeCacheService.getCachedPrice(code);
         if (cached.isPresent()) {
             EtfRealtimeCacheService.PriceSnapshot s = cached.get();
-            return new LiveQuote(s.price(), s.change(), s.changeRate(), s.volume());
+            // 거래대금도 실시간 누적값을 우선 사용. 캐시 값이 0(미수신 등)이면 당일 일봉 거래대금으로 폴백.
+            long tradeAmount = s.tradeAmount() > 0 ? s.tradeAmount() : today.getTradeAmount();
+            return new LiveQuote(s.price(), s.change(), s.changeRate(), s.volume(), tradeAmount);
         }
 
         // 캐시 없으면(장 시작 전·피드 미수신) 당일 일봉 종가 기준으로 계산한다.
         long previousClose = latestTwo.size() > 1 ? latestTwo.get(1).getClosePrice() : today.getClosePrice();
         long priceChange = today.getClosePrice() - previousClose;
         double changeRate = previousClose == 0 ? 0.0 : (priceChange * 100.0) / previousClose;
-        return new LiveQuote(today.getClosePrice(), priceChange, changeRate, today.getVolume());
+        return new LiveQuote(today.getClosePrice(), priceChange, changeRate, today.getVolume(), today.getTradeAmount());
     }
 
     private Comparator<RankedItem> comparatorFor(String sort) {
@@ -160,6 +162,6 @@ public class EtfQueryService {
                                long marketCap, String name) {
     }
 
-    private record LiveQuote(long currentPrice, long priceChange, double changeRate, long volume) {
+    private record LiveQuote(long currentPrice, long priceChange, double changeRate, long volume, long tradeAmount) {
     }
 }

@@ -22,8 +22,8 @@ public class EtfRealtimeCacheService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    public void cachePrice(String code, long price, long change, double changeRate, long volume) {
-        PriceSnapshot snapshot = new PriceSnapshot(price, change, changeRate, volume, LocalDateTime.now());
+    public void cachePrice(String code, long price, long change, double changeRate, long volume, long tradeAmount) {
+        PriceSnapshot snapshot = new PriceSnapshot(price, change, changeRate, volume, tradeAmount, LocalDateTime.now());
         write(PRICE_KEY_PREFIX + code, snapshot, "price", code);
     }
 
@@ -61,7 +61,7 @@ public class EtfRealtimeCacheService {
         }
     }
 
-    public record PriceSnapshot(long price, long change, double changeRate, long volume, LocalDateTime updatedAt) {
+    public record PriceSnapshot(long price, long change, double changeRate, long volume, long tradeAmount, LocalDateTime updatedAt) {
     }
 
     public record OrderBookSnapshotCache(long[] askPrices, long[] askQtys, long[] bidPrices, long[] bidQtys, LocalDateTime updatedAt) {
