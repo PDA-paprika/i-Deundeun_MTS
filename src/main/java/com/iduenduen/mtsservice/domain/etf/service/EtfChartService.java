@@ -20,9 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +42,7 @@ public class EtfChartService {
     private static final LocalTime SESSION_OPEN = LocalTime.of(9, 0);
     private static final LocalTime SESSION_CLOSE = LocalTime.of(15, 30);
     private static final LocalTime SESSION_CLOSE_60M = LocalTime.of(16, 0);
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
     private final EtfRepository etfRepository;
     private final EtfCandle1mRepository etfCandle1mRepository;
@@ -142,29 +143,29 @@ public class EtfChartService {
     }
 
     private List<ChartCandle> withLiveCandle(List<ChartCandle> candles, String code, String interval) {
-        LocalDateTime liveCandleTime = switch (interval) {
-            case "1m" -> LocalDateTime.now().withSecond(0).withNano(0);
-            case "10m" -> floorMinutes(10);
-            case "30m" -> floorMinutes(30);
-            case "60m" -> floorMinutes(60);
-            case "1d" -> LocalDate.now().atStartOfDay();
-            default -> null; // 1w, 1mo는 금요일/말일 flush 1회로 충분, 라이브 병합 생략
-        };
-        if (liveCandleTime == null) {
-            return candles;
-        }
-
         String keyPrefix = switch (interval) {
             case "1m" -> etfCandleAccumulatorService.key1m();
             case "10m" -> etfCandleAccumulatorService.key10m();
             case "30m" -> etfCandleAccumulatorService.key30m();
             case "60m" -> etfCandleAccumulatorService.key60m();
             case "1d" -> etfCandleAccumulatorService.key1d();
-            default -> null;
+            default -> null; // 1w, 1mo는 금요일/말일 flush 1회로 충분, 라이브 병합 생략
         };
+        if (keyPrefix == null) {
+            return candles;
+        }
 
         Map<Object, Object> live = etfCandleAccumulatorService.getCurrentCandle(code, keyPrefix);
-        if (live.isEmpty() || live.get("open") == null) {
+        // 장 휴장(주말·장 마감 후 등)에는 마지막 flush로 Redis 키가 비어 있다.
+        // 이 경우 진행 캔들을 붙이지 않고 그대로 반환 → 그날 마지막 완성 캔들(예: 15:30)이 마지막 봉이 된다.
+        if (live.isEmpty() || live.get("open") == null || live.get("startTime") == null) {
+            return candles;
+        }
+
+        // 라이브 캔들 시각은 서버 now()가 아니라 Redis 캔들 자신의 startTime을 기준으로 잡는다.
+        // 벽시계(flush 주기)와 데이터 흐름이 어긋나도 항상 실제 데이터에 앵커되도록 한다.
+        LocalDateTime liveCandleTime = liveCandleTime(interval, (String) live.get("startTime"));
+        if (liveCandleTime == null) {
             return candles;
         }
 
@@ -183,9 +184,23 @@ public class EtfChartService {
         return result;
     }
 
-    private LocalDateTime floorMinutes(int bucketMinutes) {
-        LocalDateTime now = LocalDateTime.now();
-        int floored = now.getMinute() - (now.getMinute() % bucketMinutes);
-        return now.withMinute(floored).withSecond(0).withNano(0);
+    // Redis 캔들의 startTime(yyyyMMddHHmm)을 해당 interval 버킷의 "끝시각" 라벨로 변환한다.
+    // 저장 캔들이 끝시각 라벨(예: 09:00~09:10 봉 = 09:10)이므로 라이브 캔들도 동일 규칙으로 맞춰
+    // 마지막 완성 캔들 바로 다음 칸에 정확히 놓이게 한다. 일봉은 그 날 00:00.
+    private LocalDateTime liveCandleTime(String interval, String startTime) {
+        LocalDateTime raw = LocalDateTime.parse(startTime, TIME_FORMATTER);
+        return switch (interval) {
+            case "1m" -> raw.withSecond(0).withNano(0).plusMinutes(1);
+            case "10m" -> floorToBucket(raw, 10).plusMinutes(10);
+            case "30m" -> floorToBucket(raw, 30).plusMinutes(30);
+            case "60m" -> floorToBucket(raw, 60).plusMinutes(60);
+            case "1d" -> raw.toLocalDate().atStartOfDay();
+            default -> null;
+        };
+    }
+
+    private LocalDateTime floorToBucket(LocalDateTime time, int bucketMinutes) {
+        int floored = time.getMinute() - (time.getMinute() % bucketMinutes);
+        return time.withMinute(floored).withSecond(0).withNano(0);
     }
 }
