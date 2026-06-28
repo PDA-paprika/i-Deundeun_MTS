@@ -39,6 +39,8 @@ public class LsRealtimeConnector {
     private static final String TR_TYPE_SUBSCRIBE = "3";
     private static final long SUBSCRIBE_DELAY_MS = 50;
     private static final long RECONNECT_DELAY_SECONDS = 10;
+    // I5_의 value(누적거래대금)는 백만원 단위로 와서, 일/현재가 백필(t8451·t1102)과 동일하게 원 단위로 환산한다.
+    private static final long MILLION = 1_000_000L;
 
     private final LsProperties lsProperties;
     private final LsTokenManager lsTokenManager;
@@ -159,9 +161,10 @@ public class LsRealtimeConnector {
         // 등락률(%) = 전일대비 / 전일종가 * 100, 전일종가 = 현재가 - 전일대비(부호 포함).
         long prevClose = price - signedChange;
         double changeRate = prevClose != 0 ? (double) signedChange / prevClose * 100.0 : 0.0;
+        long tradeAmount = body.path("value").asLong() * MILLION; // 누적거래대금(원)
 
         etfPriceWebSocketHandler.broadcastPriceUpdate(shcode, price, signedChange, changeRate, volume);
-        etfRealtimeCacheService.cachePrice(shcode, price, signedChange, changeRate, volume);
+        etfRealtimeCacheService.cachePrice(shcode, price, signedChange, changeRate, volume, tradeAmount);
 
         if (!persistEnabled) {
             return;
