@@ -103,6 +103,25 @@ public class EtfBackfillAdminService {
         log.info("[*] 전종목 백필 완료.");
     }
 
+    // 전종목 "일봉만" 백필 (백그라운드). 분봉(90일×4종)을 건너뛰어 훨씬 빠르다.
+    // 거래대금 0으로 굳은 기존 일봉을 t8451 값으로 upsert 보정하는 용도.
+    @Async
+    public void backfillDailyAllAsync() {
+        log.info("[*] 전종목 일봉 백필 시작(거래대금 보정). 종목수={}", SolEtfCodes.CODES.size());
+        int processed = 0;
+        for (String code : SolEtfCodes.CODES) {
+            Etf etf = etfRepository.findByCode(code).orElse(null);
+            if (etf == null) {
+                log.warn("[*] 백필 대상 종목 없음. code={}", code);
+                continue;
+            }
+            Long etfId = etf.getId();
+            runStep(code, "일봉", () -> etfCandleBackfillService.backfillDaily(etfId, code));
+            processed++;
+        }
+        log.info("[*] 전종목 일봉 백필 완료. 처리={}", processed);
+    }
+
     // 직전 영업일 "하루치"만 전종목 분봉(1/10/30/60m) 재적재(upsert). 새벽 self-heal용 경량 백필.
     // 일/주/월봉은 실시간 flush와 경계 flush가 채우므로 야간 보정에서는 제외한다.
     @Async
