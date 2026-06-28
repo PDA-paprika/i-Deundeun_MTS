@@ -49,6 +49,16 @@ public class EtfBackfillAdminController {
         return ApiResponse.success(SuccessStatus.SUCCESS_200);
     }
 
+    @PostMapping("/backfill-daily")
+    @Operation(
+            summary = "전종목 일봉만 백필 (백그라운드)",
+            description = "전종목 일봉(t8451)만 다시 받아 upsert합니다. 분봉을 건너뛰어 빠르며, 거래대금 0 보정용입니다."
+    )
+    public ResponseEntity<ApiResponse<Void>> backfillDaily() {
+        etfBackfillAdminService.backfillDailyAllAsync();
+        return ApiResponse.success(SuccessStatus.SUCCESS_200);
+    }
+
     @PostMapping("/backfill-missing")
     @Operation(
             summary = "미완 종목만 캔들 백필 (백그라운드)",
