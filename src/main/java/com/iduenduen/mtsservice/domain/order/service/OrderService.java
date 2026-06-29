@@ -6,6 +6,8 @@ import com.iduenduen.mtsservice.common.core.dto.CoreTradeRequest;
 import com.iduenduen.mtsservice.common.exception.GeneralException;
 import com.iduenduen.mtsservice.common.status.ErrorStatus;
 import com.iduenduen.mtsservice.domain.account.dto.AccountBalanceResponse;
+import com.iduenduen.mtsservice.domain.etf.entity.EtfCandle1d;
+import com.iduenduen.mtsservice.domain.etf.repository.EtfCandle1dRepository;
 import com.iduenduen.mtsservice.domain.etf.service.EtfRealtimeCacheService;
 import com.iduenduen.mtsservice.domain.order.dto.OrderRequest;
 import com.iduenduen.mtsservice.domain.order.dto.OrderResponse;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -34,6 +37,7 @@ public class OrderService {
     private final CoreAccountClient coreAccountClient;
     private final EtfRealtimeCacheService etfRealtimeCacheService;
     private final OrderExecutionWebSocketHandler orderExecutionWebSocketHandler;
+    private final EtfCandle1dRepository etfCandle1dRepository;
 
     @Transactional
     public OrderResponse submitOrder(OrderRequest request, String authHeader) {
@@ -92,7 +96,14 @@ public class OrderService {
         if (request.getOrderType() == OrderType.MARKET) {
             return etfRealtimeCacheService.getCachedPrice(request.getEtfCode())
                     .map(EtfRealtimeCacheService.PriceSnapshot::price)
-                    .orElseGet(() -> request.getPrice() != null ? request.getPrice() : 0L);
+                    .orElseGet(() -> {
+                        List<EtfCandle1d> candles = etfCandle1dRepository
+                                .findTop2ByEtfIdOrderByCandleTimeDesc(request.getEtfId());
+                        if (!candles.isEmpty()) {
+                            return candles.get(0).getClosePrice();
+                        }
+                        throw new GeneralException(ErrorStatus.PRICE_NOT_AVAILABLE);
+                    });
         }
         return request.getPrice() != null ? request.getPrice() : 0L;
     }
