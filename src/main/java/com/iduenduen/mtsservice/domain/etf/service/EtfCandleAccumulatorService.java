@@ -92,17 +92,19 @@ public class EtfCandleAccumulatorService {
         String priceStr = String.valueOf(price);
         String volumeStr = String.valueOf(delta);
 
+        // 라이브 캔들 시각은 저장 캔들·REST(withLiveCandle)과 동일한 "끝시각" 라벨(버킷 시작 + interval)로 맞춘다.
+        // (WS와 REST 라벨이 어긋나면 FE가 단조 가드로 WS 갱신을 드롭해 차트가 안 움직인다)
         accumulateKey(KEY_1M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "1m", KEY_1M, now.withSecond(0).withNano(0));
+        broadcastLiveCandle(code, "1m", KEY_1M, now.withSecond(0).withNano(0).plusMinutes(1));
 
         accumulateKey(KEY_10M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "10m", KEY_10M, flooredNow(10));
+        broadcastLiveCandle(code, "10m", KEY_10M, flooredNow(10).plusMinutes(10));
 
         accumulateKey(KEY_30M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "30m", KEY_30M, flooredNow(30));
+        broadcastLiveCandle(code, "30m", KEY_30M, flooredNow(30).plusMinutes(30));
 
         accumulateKey(KEY_60M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "60m", KEY_60M, flooredNow(60));
+        broadcastLiveCandle(code, "60m", KEY_60M, flooredNow(60).plusMinutes(60));
 
         accumulateKey(KEY_1D + code, priceStr, volumeStr, nowBucket);
         broadcastLiveCandle(code, "1d", KEY_1D, LocalDate.now().atStartOfDay());
