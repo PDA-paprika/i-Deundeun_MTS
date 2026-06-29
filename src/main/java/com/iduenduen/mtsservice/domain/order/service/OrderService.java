@@ -83,7 +83,7 @@ public class OrderService {
                 .build();
         tradeOrderRepository.save(order);
 
-        execute(order, request.getEtfCode(), execPrice, request.getEtfName(), request.getChildId(), request.getGoalId());
+        execute(order, request.getEtfCode(), execPrice, request.getEtfName(), request.getLinkId());
 
         return OrderResponse.builder()
                 .orderId(order.getId())
@@ -108,7 +108,7 @@ public class OrderService {
         return request.getPrice() != null ? request.getPrice() : 0L;
     }
 
-    private void execute(TradeOrder order, String etfCode, long execPrice, String etfName, Long childId, Long goalId) {
+    private void execute(TradeOrder order, String etfCode, long execPrice, String etfName, Long linkId) {
         int qty = order.getQty();
         order.fill(qty);
 
@@ -125,6 +125,7 @@ public class OrderService {
                 .occurredAt(LocalDateTime.now())
                 .childId(order.getChildId())
                 .goalId(order.getGoalId())
+                .linkId(linkId)
                 .build();
 
         try {
