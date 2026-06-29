@@ -32,6 +32,7 @@ public enum ErrorStatus implements BaseStatus {
     INSUFFICIENT_BALANCE("ORD_422", HttpStatus.UNPROCESSABLE_ENTITY, "잔고가 부족합니다."),
     INSUFFICIENT_HOLDING("ORD_422", HttpStatus.UNPROCESSABLE_ENTITY, "보유 수량이 부족합니다."),
     MARKET_CLOSED("ORD_403", HttpStatus.FORBIDDEN, "거래 가능 시간이 아닙니다. (09:00 ~ 15:30)"),
+    PRICE_NOT_AVAILABLE("ORD_422", HttpStatus.UNPROCESSABLE_ENTITY, "현재가를 조회할 수 없습니다."),
     /**
      * ETF
      */
