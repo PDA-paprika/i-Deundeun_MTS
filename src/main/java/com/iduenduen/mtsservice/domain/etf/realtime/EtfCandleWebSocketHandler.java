@@ -42,6 +42,9 @@ public class EtfCandleWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 한 세션이 동시에 여러 interval을 구독해 엉뚱한 interval 데이터를 받지 않도록,
+        // 이전 구독을 모두 제거하고 마지막 구독만 유지한다. (분봉 탭에 일봉 라이브 캔들이 새는 문제 방지)
+        registry.unsubscribeAll(session);
         registry.subscribe(subscriptionKey(etfCode, interval), session);
 
         ObjectNode payload = objectMapper.createObjectNode();
