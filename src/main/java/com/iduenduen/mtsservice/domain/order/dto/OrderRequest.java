@@ -20,4 +20,5 @@ public class OrderRequest {
     private String etfName;
     private Long childId;
     private Long goalId;
+    private Long linkId;
 }

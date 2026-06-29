@@ -45,4 +45,7 @@ public class CoreTradeRequest {
 
     @JsonProperty("goal_id")
     private Long goalId;
+
+    @JsonProperty("link_id")
+    private Long linkId;
 }
