@@ -30,6 +30,24 @@ public class EtfQueryService {
     private final EtfCandle1dRepository etfCandle1dRepository;
     private final EtfRealtimeCacheService etfRealtimeCacheService;
 
+    public EtfDetailResponse getEtfDetailById(Long etfId) {
+        Etf etf = etfRepository.findById(etfId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));
+
+        List<EtfCandle1d> latestTwo = etfCandle1dRepository.findTop2ByEtfIdOrderByCandleTimeDesc(etf.getId());
+        if (latestTwo.isEmpty()) {
+            throw new GeneralException(ErrorStatus.ETF_NOT_FOUND);
+        }
+
+        EtfCandle1d today = latestTwo.get(0);
+        DayOverDayChange change = computeChange(today, latestTwo);
+
+        return EtfDetailResponse.of(
+                etf, today.getClosePrice(), change.priceChange(), change.changeRate(),
+                today.getHighPrice(), today.getLowPrice(), today.getVolume(), today.getTradeAmount()
+        );
+    }
+
     public EtfDetailResponse getEtfDetail(String code) {
         Etf etf = etfRepository.findByCode(code)
                 .orElseThrow(() -> new GeneralException(ErrorStatus.ETF_NOT_FOUND));

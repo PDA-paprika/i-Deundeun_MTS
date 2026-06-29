@@ -66,6 +66,13 @@ public class EtfController {
         return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
     }
 
+    @GetMapping("/id/{etfId}")
+    @Operation(summary = "ETF ID로 상세 조회")
+    public ResponseEntity<ApiResponse<EtfDetailResponse>> getEtfDetailById(@PathVariable Long etfId) {
+        EtfDetailResponse response = etfQueryService.getEtfDetailById(etfId);
+        return ApiResponse.success(SuccessStatus.SUCCESS_200, response);
+    }
+
     @GetMapping("/{etfCode}")
     @Operation(
             summary = "ETF 상세 조회",
