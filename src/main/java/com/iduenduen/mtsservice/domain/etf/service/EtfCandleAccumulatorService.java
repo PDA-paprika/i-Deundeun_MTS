@@ -33,6 +33,8 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -55,10 +57,15 @@ public class EtfCandleAccumulatorService {
     private static final String KEY_CUM_VOLUME = "etf:cumvolume:";
 
     private static final DefaultRedisScript<Void> ACCUMULATE_SCRIPT;
+    private static final DefaultRedisScript<List> POP_SCRIPT;
     static {
         ACCUMULATE_SCRIPT = new DefaultRedisScript<>();
         ACCUMULATE_SCRIPT.setLocation(new ClassPathResource("scripts/accumulate-candle.lua"));
         ACCUMULATE_SCRIPT.setResultType(Void.class);
+
+        POP_SCRIPT = new DefaultRedisScript<>();
+        POP_SCRIPT.setLocation(new ClassPathResource("scripts/pop-candle.lua"));
+        POP_SCRIPT.setResultType(List.class);
     }
 
     private final StringRedisTemplate redisTemplate;
@@ -224,17 +231,9 @@ public class EtfCandleAccumulatorService {
 
     private void flush(String code, String keyPrefix, FlushAction action, String label) {
         String key = keyPrefix + code;
-        String snapKey = key + ":snap";
 
-        try {
-            redisTemplate.rename(key, snapKey);
-        } catch (Exception e) {
-            return;
-        }
-
-        Map<Object, Object> data = redisTemplate.opsForHash().entries(snapKey);
+        Map<Object, Object> data = popCandle(key);
         if (data.isEmpty() || !isValid(data)) {
-            redisTemplate.delete(snapKey);
             return;
         }
 
@@ -244,11 +243,26 @@ public class EtfCandleAccumulatorService {
                 log.warn("Skip flush for unknown ETF. code={}, label={}", code, label);
                 return;
             }
-            action.run(etf.getId(), data, snapKey);
+            action.run(etf.getId(), data, key);
         } catch (Exception e) {
             log.error("{} flush 실패. code={}", label, code, e);
-        } finally {
-            redisTemplate.delete(snapKey);
+        }
+    }
+
+    private Map<Object, Object> popCandle(String key) {
+        try {
+            List<Object> values = redisTemplate.execute(POP_SCRIPT, java.util.List.of(key));
+            Map<Object, Object> data = new HashMap<>();
+            if (values == null) {
+                return data;
+            }
+            for (int i = 0; i + 1 < values.size(); i += 2) {
+                data.put(values.get(i), values.get(i + 1));
+            }
+            return data;
+        } catch (Exception e) {
+            log.warn("Failed to pop candle from Redis. key={}", key, e);
+            return Map.of();
         }
     }
 
