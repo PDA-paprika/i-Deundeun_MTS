@@ -33,6 +33,8 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -55,10 +57,15 @@ public class EtfCandleAccumulatorService {
     private static final String KEY_CUM_VOLUME = "etf:cumvolume:";
 
     private static final DefaultRedisScript<Void> ACCUMULATE_SCRIPT;
+    private static final DefaultRedisScript<List> POP_SCRIPT;
     static {
         ACCUMULATE_SCRIPT = new DefaultRedisScript<>();
         ACCUMULATE_SCRIPT.setLocation(new ClassPathResource("scripts/accumulate-candle.lua"));
         ACCUMULATE_SCRIPT.setResultType(Void.class);
+
+        POP_SCRIPT = new DefaultRedisScript<>();
+        POP_SCRIPT.setLocation(new ClassPathResource("scripts/pop-candle.lua"));
+        POP_SCRIPT.setResultType(List.class);
     }
 
     private final StringRedisTemplate redisTemplate;
@@ -91,38 +98,36 @@ public class EtfCandleAccumulatorService {
         String priceStr = String.valueOf(price);
         String volumeStr = String.valueOf(delta);
 
-        // adhd 방식: 라이브 캔들 시각은 서버 now()가 아니라 Redis startTime(첫 틱 시각)을
-        // 버킷 단위로 내림(=버킷 시작)해서 쓴다. flush·REST 진행봉과 같은 규칙이라 봉이 어긋나지 않는다.
         accumulateKey(KEY_1M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "1m", KEY_1M, d -> bucketStartFromData(d, 1));
+        broadcastLiveCandle(code, "1m", KEY_1M, now.withSecond(0).withNano(0));
 
         accumulateKey(KEY_10M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "10m", KEY_10M, d -> bucketStartFromData(d, 10));
+        broadcastLiveCandle(code, "10m", KEY_10M, flooredNow(10));
 
         accumulateKey(KEY_30M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "30m", KEY_30M, d -> bucketStartFromData(d, 30));
+        broadcastLiveCandle(code, "30m", KEY_30M, flooredNow(30));
 
         accumulateKey(KEY_60M + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "60m", KEY_60M, d -> bucketStartFromData(d, 60));
+        broadcastLiveCandle(code, "60m", KEY_60M, flooredNow(60));
 
         accumulateKey(KEY_1D + code, priceStr, volumeStr, nowBucket);
-        broadcastLiveCandle(code, "1d", KEY_1D, this::dayStartFromData);
+        broadcastLiveCandle(code, "1d", KEY_1D, LocalDate.now().atStartOfDay());
 
+        // t8451은 진행 중인 주/달의 캔들을 "오늘" 날짜로 내려준다 (마감된 주/달은 마지막 거래일로 저장됨).
+        // flushWeekly/Monthly도 같은 convention(now() at flush time)이라, 라이브 브로드캐스트도 동일하게 맞춘다.
         accumulateKey(KEY_1W + code, priceStr, volumeStr, weekBucket);
-        broadcastLiveCandle(code, "1w", KEY_1W, this::weekStartFromData);
+        broadcastLiveCandle(code, "1w", KEY_1W, LocalDate.now().atStartOfDay());
 
         accumulateKey(KEY_1MO + code, priceStr, volumeStr, monthBucket);
-        broadcastLiveCandle(code, "1mo", KEY_1MO, this::monthStartFromData);
+        broadcastLiveCandle(code, "1mo", KEY_1MO, LocalDate.now().atStartOfDay());
     }
 
-    private void broadcastLiveCandle(String code, String interval, String keyPrefix,
-            java.util.function.Function<Map<Object, Object>, LocalDateTime> timeResolver) {
+    private void broadcastLiveCandle(String code, String interval, String keyPrefix, LocalDateTime candleTime) {
         try {
             Map<Object, Object> data = getCurrentCandle(code, keyPrefix);
             if (data.isEmpty() || !isValid(data)) {
                 return;
             }
-            LocalDateTime candleTime = timeResolver.apply(data);
             etfCandleWebSocketHandler.broadcastCandleUpdate(
                     code, interval, candleTime.toEpochSecond(ZoneOffset.UTC),
                     parse(data.get("open")), parse(data.get("high")), parse(data.get("low")),
@@ -168,61 +173,67 @@ public class EtfCandleAccumulatorService {
 
     @Transactional
     public void flush1m(String code) {
-        flush(code, KEY_1M, (etfId, data, snapKey) ->
-                upsert1m(etfId, data, bucketStartFromData(data, 1)), "1분봉");
+        flush(code, KEY_1M, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = LocalDateTime.now().withSecond(0).withNano(0);
+            upsert1m(etfId, data, candleTime);
+        }, "1분봉");
     }
 
     @Transactional
     public void flush10m(String code) {
-        flush(code, KEY_10M, (etfId, data, snapKey) ->
-                upsert10m(etfId, data, bucketStartFromData(data, 10)), "10분봉");
+        flush(code, KEY_10M, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = flooredNow(10);
+            upsert10m(etfId, data, candleTime);
+        }, "10분봉");
     }
 
     @Transactional
     public void flush30m(String code) {
-        flush(code, KEY_30M, (etfId, data, snapKey) ->
-                upsert30m(etfId, data, bucketStartFromData(data, 30)), "30분봉");
+        flush(code, KEY_30M, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = flooredNow(30);
+            upsert30m(etfId, data, candleTime);
+        }, "30분봉");
     }
 
     @Transactional
     public void flush60m(String code) {
-        flush(code, KEY_60M, (etfId, data, snapKey) ->
-                upsert60m(etfId, data, bucketStartFromData(data, 60)), "60분봉");
+        flush(code, KEY_60M, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = flooredNow(60);
+            upsert60m(etfId, data, candleTime);
+        }, "60분봉");
     }
 
     @Transactional
     public void flushDaily(String code) {
-        flush(code, KEY_1D, (etfId, data, snapKey) ->
-                upsertDaily(etfId, data, dayStartFromData(data)), "일봉");
+        flush(code, KEY_1D, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
+            upsertDaily(etfId, data, candleTime);
+        }, "일봉");
     }
 
-    // 금요일(또는 그 주 마지막 영업일) 장마감에만 호출됨 - 그 주 월요일 날짜로 저장
+    // 금요일(또는 그 주 마지막 영업일) 장마감에만 호출됨 - t1305 백필과 동일하게 "그 날" 날짜로 저장
     @Transactional
     public void flushWeekly(String code) {
-        flush(code, KEY_1W, (etfId, data, snapKey) ->
-                upsertWeekly(etfId, data, weekStartFromData(data)), "주봉");
+        flush(code, KEY_1W, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
+            upsertWeekly(etfId, data, candleTime);
+        }, "주봉");
     }
 
-    // 그 달의 마지막 영업일에만 호출됨 - 그 달 1일 날짜로 저장
+    // 그 달의 마지막 영업일에만 호출됨 - t1305 백필과 동일하게 "그 날" 날짜로 저장
     @Transactional
     public void flushMonthly(String code) {
-        flush(code, KEY_1MO, (etfId, data, snapKey) ->
-                upsertMonthly(etfId, data, monthStartFromData(data)), "월봉");
+        flush(code, KEY_1MO, (etfId, data, snapKey) -> {
+            LocalDateTime candleTime = LocalDate.now().atStartOfDay();
+            upsertMonthly(etfId, data, candleTime);
+        }, "월봉");
     }
 
     private void flush(String code, String keyPrefix, FlushAction action, String label) {
         String key = keyPrefix + code;
-        String snapKey = key + ":snap";
 
-        try {
-            redisTemplate.rename(key, snapKey);
-        } catch (Exception e) {
-            return;
-        }
-
-        Map<Object, Object> data = redisTemplate.opsForHash().entries(snapKey);
+        Map<Object, Object> data = popCandle(key);
         if (data.isEmpty() || !isValid(data)) {
-            redisTemplate.delete(snapKey);
             return;
         }
 
@@ -232,11 +243,26 @@ public class EtfCandleAccumulatorService {
                 log.warn("Skip flush for unknown ETF. code={}, label={}", code, label);
                 return;
             }
-            action.run(etf.getId(), data, snapKey);
+            action.run(etf.getId(), data, key);
         } catch (Exception e) {
             log.error("{} flush 실패. code={}", label, code, e);
-        } finally {
-            redisTemplate.delete(snapKey);
+        }
+    }
+
+    private Map<Object, Object> popCandle(String key) {
+        try {
+            List<Object> values = redisTemplate.execute(POP_SCRIPT, java.util.List.of(key));
+            Map<Object, Object> data = new HashMap<>();
+            if (values == null) {
+                return data;
+            }
+            for (int i = 0; i + 1 < values.size(); i += 2) {
+                data.put(values.get(i), values.get(i + 1));
+            }
+            return data;
+        } catch (Exception e) {
+            log.warn("Failed to pop candle from Redis. key={}", key, e);
+            return Map.of();
         }
     }
 
@@ -245,32 +271,10 @@ public class EtfCandleAccumulatorService {
                 && data.get("low") != null && data.get("close") != null && data.get("volume") != null;
     }
 
-    // ── adhd 방식: 모든 캔들 시각은 Redis startTime(첫 틱 시각)에서 파생한다. ──
-    // 서버 now()로 라벨을 매기면 flush 지연/타임존에 따라 봉이 한 칸 밀리지만,
-    // 데이터가 실제로 속한 시각(startTime)을 버킷 단위로 내려 쓰면 라이브·flush·REST가 모두 일치한다.
-    private LocalDateTime parseStartTime(Map<Object, Object> data) {
-        String startTime = (String) data.get("startTime");
-        return (startTime != null)
-                ? LocalDateTime.parse(startTime, BUCKET_FORMAT)
-                : LocalDateTime.now(KST).withSecond(0).withNano(0);
-    }
-
-    private LocalDateTime bucketStartFromData(Map<Object, Object> data, int bucketMinutes) {
-        LocalDateTime raw = parseStartTime(data);
-        int floored = (raw.getMinute() / bucketMinutes) * bucketMinutes;
-        return raw.toLocalDate().atTime(raw.getHour(), floored);
-    }
-
-    private LocalDateTime dayStartFromData(Map<Object, Object> data) {
-        return parseStartTime(data).toLocalDate().atStartOfDay();
-    }
-
-    private LocalDateTime weekStartFromData(Map<Object, Object> data) {
-        return parseStartTime(data).toLocalDate().with(DayOfWeek.MONDAY).atStartOfDay();
-    }
-
-    private LocalDateTime monthStartFromData(Map<Object, Object> data) {
-        return parseStartTime(data).toLocalDate().withDayOfMonth(1).atStartOfDay();
+    private LocalDateTime flooredNow(int bucketMinutes) {
+        LocalDateTime now = LocalDateTime.now();
+        int floored = now.getMinute() - (now.getMinute() % bucketMinutes);
+        return now.withMinute(floored).withSecond(0).withNano(0);
     }
 
     private long parse(Object value) {
