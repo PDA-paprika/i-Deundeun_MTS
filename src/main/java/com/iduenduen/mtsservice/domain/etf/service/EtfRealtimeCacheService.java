@@ -9,10 +9,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -36,28 +34,16 @@ public class EtfRealtimeCacheService {
         return read(PRICE_KEY_PREFIX + code, PriceSnapshot.class, "price", code);
     }
 
-    // 여러 종목 시세 캐시를 MGET 한 번으로 읽는다. (리스트 랭킹의 종목별 개별 GET N번을 1번으로 줄임)
+    // 여러 종목 시세 캐시를 한 번에 읽는다.
+    // ElastiCache Serverless(클러스터 모드)에서는 여러 슬롯에 걸친 MGET가 CROSSSLOT 에러를 내므로,
+    // 슬롯 라우팅이 정상인 단일키 GET로 종목별 조회한다. (핵심 병목인 DB N+1은 이미 1쿼리로 해소됨)
     public Map<String, PriceSnapshot> getCachedPrices(Collection<String> codes) {
-        if (codes == null || codes.isEmpty()) {
-            return Map.of();
-        }
-        List<String> codeList = new ArrayList<>(codes);
-        List<String> keys = codeList.stream().map(c -> PRICE_KEY_PREFIX + c).toList();
-        List<String> values = redisTemplate.opsForValue().multiGet(keys);
         Map<String, PriceSnapshot> result = new HashMap<>();
-        if (values == null) {
+        if (codes == null || codes.isEmpty()) {
             return result;
         }
-        for (int i = 0; i < codeList.size(); i++) {
-            String json = values.get(i);
-            if (json == null) {
-                continue;
-            }
-            try {
-                result.put(codeList.get(i), objectMapper.readValue(json, PriceSnapshot.class));
-            } catch (Exception e) {
-                log.warn("Failed to parse cached price. code={}", codeList.get(i), e);
-            }
+        for (String code : codes) {
+            getCachedPrice(code).ifPresent(snapshot -> result.put(code, snapshot));
         }
         return result;
     }
