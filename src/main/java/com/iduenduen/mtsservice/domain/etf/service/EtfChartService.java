@@ -184,16 +184,16 @@ public class EtfChartService {
         return result;
     }
 
-    // Redis 캔들의 startTime(yyyyMMddHHmm)을 해당 interval 버킷의 "끝시각" 라벨로 변환한다.
-    // 저장 캔들이 끝시각 라벨(예: 09:00~09:10 봉 = 09:10)이므로 라이브 캔들도 동일 규칙으로 맞춰
-    // 마지막 완성 캔들 바로 다음 칸에 정확히 놓이게 한다. 일봉은 그 날 00:00.
+    // Redis 캔들의 startTime(yyyyMMddHHmm)을 해당 interval 버킷의 "시작시각" 라벨로 변환한다.
+    // 저장 캔들(flush*)이 버킷 시작 라벨이므로 라이브 캔들도 동일하게 맞춰
+    // 진행 중 봉이 마지막 완성 캔들과 같은 슬롯 규칙(오프셋 없음)으로 놓이게 한다. 일봉은 그 날 00:00.
     private LocalDateTime liveCandleTime(String interval, String startTime) {
         LocalDateTime raw = LocalDateTime.parse(startTime, TIME_FORMATTER);
         return switch (interval) {
-            case "1m" -> raw.withSecond(0).withNano(0).plusMinutes(1);
-            case "10m" -> floorToBucket(raw, 10).plusMinutes(10);
-            case "30m" -> floorToBucket(raw, 30).plusMinutes(30);
-            case "60m" -> floorToBucket(raw, 60).plusMinutes(60);
+            case "1m" -> raw.withSecond(0).withNano(0);
+            case "10m" -> floorToBucket(raw, 10);
+            case "30m" -> floorToBucket(raw, 30);
+            case "60m" -> floorToBucket(raw, 60);
             case "1d" -> raw.toLocalDate().atStartOfDay();
             default -> null;
         };
