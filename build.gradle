@@ -8,6 +8,11 @@ group = 'com.iduenduen'
 version = '0.0.1-SNAPSHOT'
 description = 'iDuenDuen'
 
+// Tomcat 11.0.22의 보안 WebSocket 클라이언트(AsyncChannelWrapperSecure) 무한 재귀(StackOverflowError)
+// 회귀를 회피하기 위해 정상 동작이 검증된 11.0.18로 고정한다.
+// (LS 실시간 wss 고부하 시 읽기 루프가 재귀로 스택을 터뜨려 시세 수신/캔들 적재가 중단되던 문제)
+ext['tomcat.version'] = '11.0.18'
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
