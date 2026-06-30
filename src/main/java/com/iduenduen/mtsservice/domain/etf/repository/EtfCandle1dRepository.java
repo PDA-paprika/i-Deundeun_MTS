@@ -18,6 +18,10 @@ public interface EtfCandle1dRepository extends JpaRepository<EtfCandle1d, Long> 
 
     List<EtfCandle1d> findTop2ByEtfIdOrderByCandleTimeDesc(Long etfId);
 
+    // 전 종목 최근 일봉을 1쿼리로. etfId별 candleTime desc 정렬 → 서비스에서 etf별 최신 2개만 추림 (N+1 제거)
+    List<EtfCandle1d> findByEtfIdInAndCandleTimeGreaterThanEqualOrderByEtfIdAscCandleTimeDesc(
+            List<Long> etfIds, LocalDateTime from);
+
     List<EtfCandle1d> findByEtfIdAndCandleTimeBetweenOrderByCandleTimeDesc(
             Long etfId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 

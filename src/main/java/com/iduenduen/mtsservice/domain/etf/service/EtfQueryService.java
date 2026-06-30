@@ -16,9 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -94,8 +98,14 @@ public class EtfQueryService {
         int normalizedPage = Math.max(page, 0);
         int normalizedLimit = Math.max(limit, 1);
 
+        // 배치 조회로 N+1 제거: 일봉은 1쿼리, 시세 캐시는 MGET 1번
+        Map<Long, List<EtfCandle1d>> dailyByEtfId = loadRecentDailyCandles(
+                etfs.stream().map(Etf::getId).toList());
+        Map<String, EtfRealtimeCacheService.PriceSnapshot> cacheByCode =
+                etfRealtimeCacheService.getCachedPrices(etfs.stream().map(Etf::getCode).toList());
+
         List<RankedItem> rankedItems = etfs.stream()
-                .map(this::toRankedItem)
+                .map(etf -> toRankedItem(etf, dailyByEtfId.get(etf.getId()), cacheByCode.get(etf.getCode())))
                 .filter(item -> item != null)
                 .sorted(comparatorFor(sort))
                 .toList();
@@ -111,14 +121,33 @@ public class EtfQueryService {
         return EtfListResponse.of(totalCount, pageItems);
     }
 
-    private RankedItem toRankedItem(Etf etf) {
-        List<EtfCandle1d> latestTwo = etfCandle1dRepository.findTop2ByEtfIdOrderByCandleTimeDesc(etf.getId());
-        if (latestTwo.isEmpty()) {
+    // 전 종목 최근 일봉을 1쿼리로 가져와 etfId별 최신 2개로 그룹핑한다. (종목별 findTop2 N+1 제거)
+    private Map<Long, List<EtfCandle1d>> loadRecentDailyCandles(List<Long> etfIds) {
+        if (etfIds.isEmpty()) {
+            return Map.of();
+        }
+        // 최신 2개 거래일을 확보할 만큼 넉넉한 윈도우(휴장 포함). 일봉이라 행 수도 적다.
+        LocalDateTime windowStart = LocalDate.now().minusDays(40).atStartOfDay();
+        List<EtfCandle1d> rows = etfCandle1dRepository
+                .findByEtfIdInAndCandleTimeGreaterThanEqualOrderByEtfIdAscCandleTimeDesc(etfIds, windowStart);
+        Map<Long, List<EtfCandle1d>> byEtf = new HashMap<>();
+        for (EtfCandle1d c : rows) {
+            List<EtfCandle1d> list = byEtf.computeIfAbsent(c.getEtfId(), k -> new ArrayList<>());
+            if (list.size() < 2) {
+                list.add(c); // 이미 candleTime desc 정렬 → 앞 2개가 최신 2개
+            }
+        }
+        return byEtf;
+    }
+
+    private RankedItem toRankedItem(Etf etf, List<EtfCandle1d> latestTwo,
+                                    EtfRealtimeCacheService.PriceSnapshot cached) {
+        if (latestTwo == null || latestTwo.isEmpty()) {
             return null;
         }
 
         EtfCandle1d today = latestTwo.get(0);
-        LiveQuote quote = resolveQuote(etf.getCode(), today, latestTwo);
+        LiveQuote quote = buildQuote(today, latestTwo, cached);
         long marketCap = quote.currentPrice() * etf.getListing();
 
         EtfListItem listItem = EtfListItem.of(
@@ -128,15 +157,18 @@ public class EtfQueryService {
         return new RankedItem(listItem, quote.volume(), quote.tradeAmount(), quote.changeRate(), marketCap, etf.getName());
     }
 
+    // 단일 종목(상세) 경로 — 캐시를 직접 조회한다(N+1 무관).
     private LiveQuote resolveQuote(String code, EtfCandle1d today, List<EtfCandle1d> latestTwo) {
-        // 실시간 캐시가 있으면 가격·전일대비·등락률·거래량을 그대로 사용한다(WS와 동일 출처).
-        // → REST 초기값과 WS 실시간값의 기준이 같아 화면에서 값이 튀지 않는다.
-        Optional<EtfRealtimeCacheService.PriceSnapshot> cached = etfRealtimeCacheService.getCachedPrice(code);
-        if (cached.isPresent()) {
-            EtfRealtimeCacheService.PriceSnapshot s = cached.get();
+        return buildQuote(today, latestTwo, etfRealtimeCacheService.getCachedPrice(code).orElse(null));
+    }
+
+    // 시세 산출 공통 로직. cached가 있으면 실시간 캐시 기준(WS와 동일 출처), 없으면 당일 일봉 기준.
+    private LiveQuote buildQuote(EtfCandle1d today, List<EtfCandle1d> latestTwo,
+                                 EtfRealtimeCacheService.PriceSnapshot cached) {
+        if (cached != null) {
             // 거래대금도 실시간 누적값을 우선 사용. 캐시 값이 0(미수신 등)이면 당일 일봉 거래대금으로 폴백.
-            long tradeAmount = s.tradeAmount() > 0 ? s.tradeAmount() : today.getTradeAmount();
-            return new LiveQuote(s.price(), s.change(), s.changeRate(), s.volume(), tradeAmount);
+            long tradeAmount = cached.tradeAmount() > 0 ? cached.tradeAmount() : today.getTradeAmount();
+            return new LiveQuote(cached.price(), cached.change(), cached.changeRate(), cached.volume(), tradeAmount);
         }
 
         // 캐시 없으면(장 시작 전·피드 미수신) 당일 일봉 종가 기준으로 계산한다.
