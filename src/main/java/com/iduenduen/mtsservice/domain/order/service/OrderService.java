@@ -42,10 +42,10 @@ public class OrderService {
     @Transactional
     public OrderResponse submitOrder(OrderRequest request, String authHeader) {
 
-//        LocalTime now = LocalTime.now(ZoneId.of("Asia/Seoul"));
-//        if (now.isBefore(LocalTime.of(9, 0)) || now.isAfter(LocalTime.of(15, 30))) {
-//            throw new GeneralException(ErrorStatus.MARKET_CLOSED);
-//        }
+        LocalTime now = LocalTime.now(ZoneId.of("Asia/Seoul"));
+        if (now.isBefore(LocalTime.of(9, 0)) || now.isAfter(LocalTime.of(15, 30))) {
+            throw new GeneralException(ErrorStatus.MARKET_CLOSED);
+        }
 
         if (request.getSide() == OrderSide.BUY) {
             AccountBalanceResponse balance = coreAccountClient.getBalance(request.getAccountId(), authHeader);
