@@ -64,7 +64,6 @@ public class EtfCandleAccumulatorService {
     private final StringRedisTemplate redisTemplate;
     private final EtfRepository etfRepository;
     private final EtfCandleWebSocketHandler etfCandleWebSocketHandler;
-    private final EtfRealtimeCacheService etfRealtimeCacheService;
     private final EtfCandle1mRepository etfCandle1mRepository;
     private final EtfCandle10mRepository etfCandle10mRepository;
     private final EtfCandle30mRepository etfCandle30mRepository;
@@ -92,8 +91,6 @@ public class EtfCandleAccumulatorService {
         String priceStr = String.valueOf(price);
         String volumeStr = String.valueOf(delta);
 
-        // 라이브 캔들 시각은 저장 캔들(flush*)과 동일하게 "버킷 시작" 라벨로 맞춘다.
-        // (과거=시작, 라이브=끝(+interval)이면 라이브 봉이 한 칸 밀려 gap이 생기고 flush 시 한 칸 점프한다)
         accumulateKey(KEY_1M + code, priceStr, volumeStr, nowBucket);
         broadcastLiveCandle(code, "1m", KEY_1M, now.withSecond(0).withNano(0));
 
@@ -201,14 +198,9 @@ public class EtfCandleAccumulatorService {
 
     @Transactional
     public void flushDaily(String code) {
-        // 실시간 누적거래대금(I5_ value)은 가격 캐시에 들어있다. 일봉에 그 최종 누적거래대금을 저장한다.
-        // (실시간 OHLCV 누적 경로는 거래대금을 추적하지 않아 기존엔 일봉 tradeAmount가 0으로 굳었다.)
-        long tradeAmount = etfRealtimeCacheService.getCachedPrice(code)
-                .map(EtfRealtimeCacheService.PriceSnapshot::tradeAmount)
-                .orElse(0L);
         flush(code, KEY_1D, (etfId, data, snapKey) -> {
             LocalDateTime candleTime = LocalDate.now().atStartOfDay();
-            upsertDaily(etfId, data, candleTime, tradeAmount);
+            upsertDaily(etfId, data, candleTime);
         }, "일봉");
     }
 
@@ -311,14 +303,12 @@ public class EtfCandleAccumulatorService {
         );
     }
 
-    private void upsertDaily(Long etfId, Map<Object, Object> data, LocalDateTime candleTime, long tradeAmount) {
+    private void upsertDaily(Long etfId, Map<Object, Object> data, LocalDateTime candleTime) {
         long open = parse(data.get("open")), high = parse(data.get("high")), low = parse(data.get("low"));
         long close = parse(data.get("close")), volume = parse(data.get("volume"));
-        // 거래대금 캐시가 비어 0이면 기존 값을 보존(백필로 채워둔 값 등을 0으로 덮지 않음).
         etfCandle1dRepository.findByEtfIdAndCandleTime(etfId, candleTime).ifPresentOrElse(
-                existing -> existing.updateSnapshot(open, high, low, close, volume,
-                        tradeAmount > 0 ? tradeAmount : existing.getTradeAmount()),
-                () -> etfCandle1dRepository.save(EtfCandle1d.of(etfId, open, high, low, close, volume, tradeAmount, candleTime))
+                existing -> existing.updateSnapshot(open, high, low, close, volume, existing.getTradeAmount()),
+                () -> etfCandle1dRepository.save(EtfCandle1d.of(etfId, open, high, low, close, volume, 0L, candleTime))
         );
     }
 
